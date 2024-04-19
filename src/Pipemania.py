@@ -1,3 +1,5 @@
+from sys import stdin
+
 class Board:
     """ Representação interna de uma grelha de PipeMania. """
     def adjacent_vertical_values(self, row: int, col: int) -> (str, str): """ Devolve os valores imediatamente acima e abaixo, respectivamente. """
@@ -9,13 +11,13 @@ class Board:
     # TODO: outros metodos da classe
 @staticmethod
 def parse_instance():
-    """Lê a instância do problema do standard input (stdin) e retorna uma instância da classe Board.
-        Por exemplo:
-            $ python3 pipe_mania.py < input_T01
-            > from sys import stdin
-            > line = stdin.readline().split()
-        """
-    # TODO
+    board = []
+    for line in sys.stdin:
+        # Split the line on tab character and remove newline character
+        line = line.rstrip('\n').split('\t')
+        board.append(line)
+    print(board)
+    return board
 
 #class PipeMania(Problem):
     #def __init__(self, initial_state: Board, goal_state: Board):
