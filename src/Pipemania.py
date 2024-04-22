@@ -9,17 +9,33 @@ class Board:
     # TODO
 
     # TODO: outros metodos da classe
-@staticmethod
-def parse_instance():
-    board = []
-    for line in sys.stdin:
-        # Split the line on tab character and remove newline character
-        line = line.rstrip('\n').split('\t')
-        board.append(line)
-    print(board)
-    return board
 
-#class PipeMania(Problem):
+    def parse_instance(input_str):
+        # Split the input string by newline characters to get each row
+        rows = input_str.strip().split('\n')
+
+        # Initialize a two-dimensional list to store the parsed values
+        instance = []
+
+        # Iterate through each row
+        for row in rows:
+            # Split each row by tab characters to get the individual values
+            values = row.split('\t')
+
+            # Append the values of the row to the instance list
+            instance.append(values)
+
+        return instance
+
+    # Example usage:
+    input_str = "FB\tVB\tVE\nBD\tBE\tLV\nFC\tFC\tFC\n"
+    parsed_instance = parse_instance(input_str)
+
+    # Print the parsed instance
+    for row in parsed_instance:
+        print(row)
+
+    #class PipeMania(Problem):
     #def __init__(self, initial_state: Board, goal_state: Board):
 
     """ O construtor especifica o estado inicial. """
