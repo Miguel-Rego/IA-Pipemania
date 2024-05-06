@@ -1,22 +1,27 @@
+import sys
 from typing import List, Tuple
 import search
 
 class PipeManiaState:
     state_id = 0
-    def __init__(self, board):
+
+    def __init__(self, board: 'Board'):
         self.board = board
         self.id = PipeManiaState.state_id
         PipeManiaState.state_id += 1
 
-    def __lt__(self, other):
-        """Este método é utilizado em caso de empate na gestão da lista de abertos nas procuras informadas."""
+    def __lt__(self, other: 'PipeManiaState'):
         return self.id < other.id
 
 class Board:
-    """Representação interna de uma grelha de PipeMania."""
+    """Representação interna de um tabuleiro de PipeMania."""
 
-    def __init__(self, grid):
+    def __init__(self, grid: List[List[str]]):
         self.grid = grid  # Store the grid
+
+    def get_value(self, row: int, col: int) -> str:
+        """Devolve o valor na respetiva posição do tabuleiro."""
+        return self.grid[row][col]
 
     def adjacent_vertical_values(self, row: int, col: int) -> Tuple[str, str]:
         """Devolve os valores imediatamente acima e abaixo, respectivamente."""
@@ -24,27 +29,49 @@ class Board:
         below_value = self.grid[row + 1][col] if row < len(self.grid) - 1 else None
         return above_value, below_value
 
-    def get_value(self, row: int, col: int) -> str:
-        """Devolve o valor na posição especificada."""
-        return self.grid[row][col]
-
     def adjacent_horizontal_values(self, row: int, col: int) -> Tuple[str, str]:
         """Devolve os valores imediatamente à esquerda e à direita, respectivamente."""
         left_value = self.grid[row][col - 1] if col > 0 else None
         right_value = self.grid[row][col + 1] if col < len(self.grid[row]) - 1 else None
         return left_value, right_value
 
-    @staticmethod
-    def parse_instance(input_str: str) -> List[List[str]]:
-        """Parses the input string and returns a 2D list representing the board."""
-        rows = input_str.strip().split('\n')
-        instance = [row.split('\t') for row in rows]
-        return instance
+    def print_board(self):
+        """Prints the board grid."""
+        for row in self.grid:
+            print('\t'.join(row))
 
-class PipeMania:
-    def __init__(self, initial_state: PipeManiaState, goal_state: PipeManiaState):
-        self.initial_state = initial_state
-        self.goal_state = goal_state
+    @staticmethod
+    def parse_instance() -> 'Board':
+        """Lê o conteúdo do arquivo 'test.txt' e retorna uma instância da classe Board."""
+        with open('test.txt', 'r') as file:
+            content = file.read()
+
+        # Split the content into rows and columns
+        rows = content.strip().split('\n')
+        grid = [row.split(' ') for row in rows]
+
+        # Return the Board object with the parsed grid
+        return Board(grid)
+
+
+class PipeMania(search.Problem):
+    def __init__(self, board: Board):
+        """O construtor especifica o estado inicial."""
+        super().__init__(PipeManiaState(board))
+
+    def actions(self, state: 'PipeManiaState') -> List[Tuple[int, int, bool]]:
+        """Retorna uma lista de ações que podem ser executadas a partir do estado passado como argumento."""
+        actions_list = []
+        for row in range(len(state.board.grid)):
+            for col in range(len(state.board.grid[row])):
+                piece = state.board.get_value(row, col)
+                if piece.startswith("L"):
+                    actions_list.append((row, col, True))  # Clockwise rotation only
+                else:
+                    actions_list.append((row, col, True))  # Clockwise rotation
+                    actions_list.append((row, col, False))  # Counter-clockwise rotation
+        return actions_list
+
     def incompatible_pieces_list(self, input_piece: str):
         """Based on a piece input determines which pieces are incompatible with it"""
         incompatible_list = []
@@ -58,41 +85,28 @@ class PipeMania:
             incompatible_list = ['FC', 'FB', 'VB', 'LV', 'BD', 'VD']
         return incompatible_list
 
-    def check_incompatibility(self, state: PipeManiaState, input_piece: str, row: int, col: int):
-        """Based on a piece input determines which pieces are incompatible with"""
+    def check_incompatibility(self, state: PipeManiaState, input_piece: str, row: int, col: int) -> bool:
+        """Based on a piece input determines which pieces are incompatible with it"""
         horizontal_positions = state.board.adjacent_horizontal_values(row, col)
         vertical_positions = state.board.adjacent_vertical_values(row, col)
         if input_piece.startswith("F"):
-            orientation = state.board[row][col][1]
-            if orientation == "C" and (vertical_positions[1] is None or vertical_positions[1] in self.incompatible_pieces_list('FC') or vertical_positions[1].startsWith("F")):
+            orientation = input_piece[1]
+            if orientation == "C" and (vertical_positions[0] is None or vertical_positions[0] in self.incompatible_pieces_list('FC')):
                 return True
 
-            elif orientation == "B" and (vertical_positions[0] is None or vertical_positions[0] in self.incompatible_pieces_list('FB') or vertical_positions[0].startsWith("F")):
+            elif orientation == "B" and (vertical_positions[1] is None or vertical_positions[1] in self.incompatible_pieces_list('FB')):
                 return True
 
-            elif orientation == "E" and (horizontal_positions[0] is None or horizontal_positions[0] in self.incompatible_pieces_list('FE') or horizontal_positions[0].startsWith("F")):
+            elif orientation == "E" and (horizontal_positions[0] is None or horizontal_positions[0] in self.incompatible_pieces_list('FE')):
                 return True
 
-            elif orientation == "D" and (horizontal_positions[1] is None or horizontal_positions[1] in self.incompatible_pieces_list('FD') or horizontal_positions[1].startsWith("F")):
+            elif orientation == "D" and (horizontal_positions[1] is None or horizontal_positions[1] in self.incompatible_pieces_list('FD')):
                 return True
 
         return False
 
-
-    def actions(self, state: PipeManiaState) -> List[Tuple[int, int, bool]]:
-        """Returns a list of actions that can be executed from the given state."""
-        actions_list = []
-        for row in range(len(state.board.grid)):
-            for col in range(len(state.board.grid[row])):
-                piece = state.board.get_value(row, col)
-                if piece.startswith("L"):
-                    actions_list.append((row, col, True))  # Clockwise rotation only
-                else:
-                    actions_list.append((row, col, True))  # Clockwise rotation
-                    actions_list.append((row, col, False))  # Counter-clockwise rotation
-        return actions_list
-    def result(self, state: PipeManiaState, action: Tuple[int, int, bool]) -> PipeManiaState:
-        """Returns the resulting state after applying the given action to the current state."""
+    def result(self, state: 'PipeManiaState', action: Tuple[int, int, bool]) -> 'PipeManiaState':
+        """Retorna o estado resultante de executar a 'action' sobre 'state' passado como argumento."""
         row, col, clockwise = action
         board = state.board
 
@@ -151,108 +165,96 @@ class PipeMania:
         new_state = PipeManiaState(Board(new_grid))
         return new_state
 
-    def goal_test(self, state: PipeManiaState):
+    def goal_test(self, state: 'PipeManiaState') -> bool:
         """Retorna True se e só se o estado passado como argumento é
         um estado objetivo. Deve verificar se todas as posições do tabuleiro
         estão preenchidas de acordo com as regras do problema."""
-        for row in range(len(state.board)):
-            for col in range(len(state.board[row])):
+        print("chegou aqui")
+        for row in range(len(state.board.grid)):
+            for col in range(len(state.board.grid[row])):
                 horizontal_positions = state.board.adjacent_horizontal_values(row, col)
                 vertical_positions = state.board.adjacent_vertical_values(row, col)
-                if state.board[row][col].startswith("F"):
-                    orientation = state.board[row][col][1]
-                    if orientation == "C" and (vertical_positions[1] is None or vertical_positions[1] in self.incompatible_pieces_list('FC') or vertical_positions[1].startsWith("F")):
+                if state.board.grid[row][col].startswith("F"):
+                    orientation = state.board.grid[row][col][1]
+                    if orientation == "C" and (vertical_positions[0] is None or vertical_positions[0] in self.incompatible_pieces_list('FC') or vertical_positions[0].startswith("F")):
                         return False
 
-                    elif orientation == "B" and (vertical_positions[0] is None or vertical_positions[0] in self.incompatible_pieces_list('FB') or vertical_positions[0].startsWith("F")):
+                    elif orientation == "B" and (vertical_positions[1] is None or vertical_positions[1] in self.incompatible_pieces_list('FB') or vertical_positions[1].startswith("F")):
                         return False
 
-                    elif orientation == "E" and (horizontal_positions[0] is None or horizontal_positions[0] in self.incompatible_pieces_list('FE') or horizontal_positions[0].startsWith("F")):
+                    elif orientation == "E" and (horizontal_positions[0] is None or horizontal_positions[0] in self.incompatible_pieces_list('FE') or horizontal_positions[0].startswith("F")):
                         return False
 
-                    elif orientation == "D" and (horizontal_positions[1] is None or horizontal_positions[1] in self.incompatible_pieces_list('FD') or horizontal_positions[1].startsWith('F')):
+                    elif orientation == "D" and (horizontal_positions[1] is None or horizontal_positions[1] in self.incompatible_pieces_list('FD') or horizontal_positions[1].startswith('F')):
                         return False
 
-                elif state.board[row][col].startswith("B"):
-                    orientation = state.board[row][col][1]
+                elif state.board.grid[row][col].startswith("B"):
+                    orientation = state.board.grid[row][col][1]
                     if (orientation == "C" and
-                    (self.check_incompatibility(initial_state,'FC', row, col) or
-                    self.check_incompatibility(initial_state,'FE', row, col)
-                    or self.check_incompatibility(initial_state,'FD', row, col))):
+                    (self.check_incompatibility(self.initial, 'FC', row, col) or
+                     self.check_incompatibility(self.initial, 'FE', row, col)
+                     or self.check_incompatibility(self.initial, 'FD', row, col))):
                         return False
 
                     elif (orientation == "B" and
-                    (self.check_incompatibility(initial_state,'FE', row, col) or
-                    self.check_incompatibility(initial_state,'FB', row, col)
-                    or self.check_incompatibility(initial_state,'FD', row, col))):
+                    (self.check_incompatibility(self.initial, 'FE', row, col) or
+                     self.check_incompatibility(self.initial, 'FB', row, col)
+                     or self.check_incompatibility(self.initial, 'FD', row, col))):
                         return False
 
                     elif (orientation == "E" and
-                    (self.check_incompatibility(initial_state,'FC', row, col) or
-                    self.check_incompatibility(initial_state,'FE', row, col)
-                    or self.check_incompatibility(initial_state,'FB', row, col))):
+                    (self.check_incompatibility(self.initial, 'FC', row, col) or
+                     self.check_incompatibility(self.initial, 'FE', row, col)
+                     or self.check_incompatibility(self.initial, 'FB', row, col))):
                         return False
 
 
                     elif (orientation == "D" and
-                    (self.check_incompatibility(initial_state, 'FC', row, col) or
-                    self.check_incompatibility(initial_state, 'FD', row, col)
-                    or self.check_incompatibility(initial_state, 'FB', row, col))):
+                    (self.check_incompatibility(self.initial, 'FC', row, col) or
+                     self.check_incompatibility(self.initial, 'FD', row, col)
+                     or self.check_incompatibility(self.initial, 'FB', row, col))):
                         return False
 
-                elif state.board[row][col].startswith("V"):
-                    orientation = state.board[row][col][1]
+                elif state.board.grid[row][col].startswith("V"):
+                    orientation = state.board.grid[row][col][1]
                     if (orientation == "C" and
-                    (self.check_incompatibility(initial_state, 'FC', row, col) or
-                    self.check_incompatibility(initial_state, 'FE', row, col))):
+                    (self.check_incompatibility(self.initial, 'FC', row, col) or
+                     self.check_incompatibility(self.initial, 'FE', row, col))):
                         return False
 
                     elif (orientation == "B" and
-                    (self.check_incompatibility(initial_state, 'FD', row, col) or
-                    self.check_incompatibility(initial_state, 'FB', row, col))):
+                    (self.check_incompatibility(self.initial, 'FD', row, col) or
+                     self.check_incompatibility(self.initial, 'FB', row, col))):
                         return False
 
 
                     elif (orientation == "E" and
-                    (self.check_incompatibility(initial_state, 'FE', row, col) or
-                    self.check_incompatibility(initial_state, 'FB', row, col))):
+                    (self.check_incompatibility(self.initial, 'FE', row, col) or
+                     self.check_incompatibility(self.initial, 'FB', row, col))):
                         return False
 
 
                     elif (orientation == "D" and
-                    (self.check_incompatibility(initial_state, 'FC', row, col) or
-                    self.check_incompatibility(initial_state, 'FD', row, col))):
+                    (self.check_incompatibility(self.initial, 'FC', row, col) or
+                     self.check_incompatibility(self.initial, 'FD', row, col))):
                         return False
 
-                elif state.board[row][col].startswith("L"):
-                    orientation = state.board[row][col][1]
+                elif state.board.grid[row][col].startswith("L"):
+                    orientation = state.board.grid[row][col][1]
                     if (orientation == "H" and
-                    (self.check_incompatibility(initial_state, 'FE', row, col) or
-                    self.check_incompatibility(initial_state, 'FD', row, col))):
+                    (self.check_incompatibility(self.initial, 'FE', row, col) or
+                     self.check_incompatibility(self.initial, 'FD', row, col))):
                         return False
 
                     if (orientation == "V" and
-                    (self.check_incompatibility(initial_state, 'FC', row, col) or
-                    self.check_incompatibility(initial_state, 'FB', row, col))):
+                    (self.check_incompatibility(self.initial, 'FC', row, col) or
+                     self.check_incompatibility(self.initial, 'FB', row, col))):
                         return False
         return True
 
 
-
-
-
-
-
 # Example usage:
-input_str = "FB\tVC\tVD\nBC\tBB\tLV\nFB\tFB\tFE\n"
-parsed_instance = Board.parse_instance(input_str)
-initial_state = PipeManiaState(Board(parsed_instance))
-pipe_mania_problem = PipeMania(initial_state, None)
-solution = search.breadth_first_tree_search(PipeMania)
-
-# Test the result function
-action = (1, 2, True)  # Example action: Rotate piece at row 1, col 2 clockwise
-result_state = pipe_mania_problem.result(initial_state, action)
-print("Resulting state after applying the action:")
-for row in result_state.board.grid:
-    print(row)
+parsed_instance = Board.parse_instance()
+problem = PipeMania(parsed_instance)
+solution = search.breadth_first_tree_search(problem)
+solution.state.board.print_board()
