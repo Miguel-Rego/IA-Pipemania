@@ -191,70 +191,88 @@ class PipeMania(search.Problem):
                 elif state.board.grid[row][col].startswith("B"):
                     orientation = state.board.grid[row][col][1]
                     if (orientation == "C" and
-                    (self.check_incompatibility(self.initial, 'FC', row, col) or
-                     self.check_incompatibility(self.initial, 'FE', row, col)
-                     or self.check_incompatibility(self.initial, 'FD', row, col))):
+                    (self.check_incompatibility(state, 'FC', row, col) or
+                     self.check_incompatibility(state, 'FE', row, col)
+                     or self.check_incompatibility(state, 'FD', row, col))):
                         return False
 
                     elif (orientation == "B" and
-                    (self.check_incompatibility(self.initial, 'FE', row, col) or
-                     self.check_incompatibility(self.initial, 'FB', row, col)
-                     or self.check_incompatibility(self.initial, 'FD', row, col))):
+                    (self.check_incompatibility(state, 'FE', row, col) or
+                     self.check_incompatibility(state, 'FB', row, col)
+                     or self.check_incompatibility(state, 'FD', row, col))):
                         return False
 
                     elif (orientation == "E" and
-                    (self.check_incompatibility(self.initial, 'FC', row, col) or
-                     self.check_incompatibility(self.initial, 'FE', row, col)
-                     or self.check_incompatibility(self.initial, 'FB', row, col))):
+                    (self.check_incompatibility(state, 'FC', row, col) or
+                     self.check_incompatibility(state, 'FE', row, col)
+                     or self.check_incompatibility(state, 'FB', row, col))):
                         return False
 
 
                     elif (orientation == "D" and
-                    (self.check_incompatibility(self.initial, 'FC', row, col) or
-                     self.check_incompatibility(self.initial, 'FD', row, col)
-                     or self.check_incompatibility(self.initial, 'FB', row, col))):
+                    (self.check_incompatibility(state, 'FC', row, col) or
+                     self.check_incompatibility(state, 'FD', row, col)
+                     or self.check_incompatibility(state, 'FB', row, col))):
                         return False
 
                 elif state.board.grid[row][col].startswith("V"):
                     orientation = state.board.grid[row][col][1]
                     if (orientation == "C" and
-                    (self.check_incompatibility(self.initial, 'FC', row, col) or
-                     self.check_incompatibility(self.initial, 'FE', row, col))):
+                    (self.check_incompatibility(state, 'FC', row, col) or
+                     self.check_incompatibility(state, 'FE', row, col))):
                         return False
 
                     elif (orientation == "B" and
-                    (self.check_incompatibility(self.initial, 'FD', row, col) or
-                     self.check_incompatibility(self.initial, 'FB', row, col))):
+                    (self.check_incompatibility(state, 'FD', row, col) or
+                     self.check_incompatibility(state, 'FB', row, col))):
                         return False
 
 
                     elif (orientation == "E" and
-                    (self.check_incompatibility(self.initial, 'FE', row, col) or
-                     self.check_incompatibility(self.initial, 'FB', row, col))):
+                    (self.check_incompatibility(state, 'FE', row, col) or
+                     self.check_incompatibility(state, 'FB', row, col))):
                         return False
 
 
                     elif (orientation == "D" and
-                    (self.check_incompatibility(self.initial, 'FC', row, col) or
-                     self.check_incompatibility(self.initial, 'FD', row, col))):
+                    (self.check_incompatibility(state, 'FC', row, col) or
+                     self.check_incompatibility(state, 'FD', row, col))):
                         return False
 
                 elif state.board.grid[row][col].startswith("L"):
                     orientation = state.board.grid[row][col][1]
                     if (orientation == "H" and
-                    (self.check_incompatibility(self.initial, 'FE', row, col) or
-                     self.check_incompatibility(self.initial, 'FD', row, col))):
+                    (self.check_incompatibility(state, 'FE', row, col) or
+                     self.check_incompatibility(state, 'FD', row, col))):
                         return False
 
                     if (orientation == "V" and
-                    (self.check_incompatibility(self.initial, 'FC', row, col) or
-                     self.check_incompatibility(self.initial, 'FB', row, col))):
+                    (self.check_incompatibility(state, 'FC', row, col) or
+                     self.check_incompatibility(state, 'FB', row, col))):
                         return False
         return True
 
 
 # Example usage:
-parsed_instance = Board.parse_instance()
-problem = PipeMania(parsed_instance)
-solution = search.breadth_first_tree_search(problem)
-solution.state.board.print_board()
+# Ler grelha do figura 1a:
+board = Board.parse_instance()
+# Criar uma instância de PipeMania:
+problem = PipeMania(board)
+# Criar um estado com a configuração inicial:
+s0 = PipeManiaState(board)
+# Aplicar as ações que resolvem a instância
+s1 = problem.result(s0, (0, 1, True))
+s2 = problem.result(s1, (0, 1, True))
+s3 = problem.result(s2, (0, 2, True))
+s4 = problem.result(s3, (0, 2, True))
+s5 = problem.result(s4, (1, 0, True))
+s6 = problem.result(s5, (1, 1, True))
+s7 = problem.result(s6, (2, 0, False)) # anti-clockwise (exemplo de uso)
+s8 = problem.result(s7, (2, 0, False)) # anti-clockwise (exemplo de uso)
+s9 = problem.result(s8, (2, 1, True))
+s10 = problem.result(s9, (2, 1, True))
+s11 = problem.result(s10, (2, 2, True))
+# Verificar se foi atingida a solução
+print("Is goal?", problem.goal_test(s5))
+print("Is goal?", problem.goal_test(s11))
+s11.board.print_board()
