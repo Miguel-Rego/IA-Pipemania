@@ -1,6 +1,8 @@
 import sys
 from typing import List, Tuple
 import search
+from src.search import Node
+
 
 class PipeManiaState:
     state_id = 0
@@ -252,27 +254,44 @@ class PipeMania(search.Problem):
                         return False
         return True
 
+    def longest_continuous_pipe_length(self, state: 'PipeManiaState') -> int:
+        max_length = 0
+        visited = set()
+
+        for row in range(len(state.board.grid)):
+            for col in range(len(state.board.grid[row])):
+                piece = state.board.get_value(row, col)
+                if piece.startswith("F") and (row, col) not in visited:
+                    length = self.dfs(state, row, col, visited)
+                    max_length = max(max_length, length)
+
+        return max_length
+
+    def dfs(self, state: PipeManiaState, row: int, col: int, visited: set) -> int:
+        if (row < 0 or row >= len(state.board.grid) or col < 0 or col >= len(state.board.grid[row]) or
+                state.board.get_value(row, col) != 'F' or (row, col) in visited):
+            return 0
+
+        visited.add((row, col))
+        length = 1  # Start with length 1 for the current piece
+
+        # Check compatibility with adjacent pieces
+        for dr, dc in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
+            new_row, new_col = row + dr, col + dc
+            if 0 <= new_row < len(state.board.grid) and 0 <= new_col < len(state.board.grid[row]):
+                next_piece = state.board.get_value(new_row, new_col)
+                if next_piece.startswith("F") and not self.check_incompatibility(state, next_piece, new_row, new_col):
+                    length += self.dfs(state, new_row, new_col, visited)  # Recursively explore next piece
+        return length
+
+    def h(self, node: 'Node') -> float:
+        """Função heuristica utilizada para a procura A*."""
+        state = node.state
+        return self.longest_continuous_pipe_length(state)
+
 
 # Example usage:
-# Ler grelha do figura 1a:
-board = Board.parse_instance()
-# Criar uma instância de PipeMania:
-problem = PipeMania(board)
-# Criar um estado com a configuração inicial:
-s0 = PipeManiaState(board)
-# Aplicar as ações que resolvem a instância
-s1 = problem.result(s0, (0, 1, True))
-s2 = problem.result(s1, (0, 1, True))
-s3 = problem.result(s2, (0, 2, True))
-s4 = problem.result(s3, (0, 2, True))
-s5 = problem.result(s4, (1, 0, True))
-s6 = problem.result(s5, (1, 1, True))
-s7 = problem.result(s6, (2, 0, False)) # anti-clockwise (exemplo de uso)
-s8 = problem.result(s7, (2, 0, False)) # anti-clockwise (exemplo de uso)
-s9 = problem.result(s8, (2, 1, True))
-s10 = problem.result(s9, (2, 1, True))
-s11 = problem.result(s10, (2, 2, True))
-# Verificar se foi atingida a solução
-print("Is goal?", problem.goal_test(s5))
-print("Is goal?", problem.goal_test(s11))
-s11.board.print_board()
+parsed_instance = Board.parse_instance()
+problem = PipeMania(parsed_instance)
+solution = search.greedy_search(problem)
+solution.state.board.print_board()
