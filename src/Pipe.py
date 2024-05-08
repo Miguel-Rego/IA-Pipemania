@@ -329,7 +329,7 @@ class PipeMania(search.Problem):
         elif piece.startswith("L"):
             orientation = piece[1]
             if orientation == "H":
-                new_orientation = "V" if clockwise else "v"
+                new_orientation = "V" if clockwise else "V"
             elif orientation == "V":
                 new_orientation = "H" if clockwise else "H"
             new_piece = "L" + new_orientation
@@ -345,7 +345,6 @@ class PipeMania(search.Problem):
         """Retorna True se e só se o estado passado como argumento é
         um estado objetivo. Deve verificar se todas as posições do tabuleiro
         estão preenchidas de acordo com as regras do problema."""
-        print("chegou aqui")
         for row in range(len(state.board.grid)):
             for col in range(len(state.board.grid[row])):
                 if not self.piece_compatibility_converter(state, state.board.grid[row][col], row, col):
@@ -385,12 +384,13 @@ class PipeMania(search.Problem):
     def h(self, node: 'Node') -> float:
         """Função heuristica utilizada para a procura A*."""
         state = node.state
-        return self.longest_continuous_pipe_length(state)
+        print(len(state.board.grid) * len(state.board.grid) - self.longest_continuous_pipe_length(state))
+        return len(state.board.grid) * len(state.board.grid) - self.longest_continuous_pipe_length(state)
 
 
 # Example usage:
 board = Board.parse_instance()
 problem = PipeMania(board)
-goal_node = search.greedy_search(problem)
+goal_node = search.astar_search(problem)
 print(problem.goal_test(goal_node.state))
 print(goal_node.state.board.print_board())
