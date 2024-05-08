@@ -61,17 +61,60 @@ class PipeMania(search.Problem):
         """O construtor especifica o estado inicial."""
         super().__init__(PipeManiaState(board))
 
-    def actions(self, state: 'PipeManiaState') -> List[Tuple[int, int, bool]]:
+    def actions(self, state: 'PipeManiaState') -> List[Tuple[int, int, str]]:
         """Retorna uma lista de ações que podem ser executadas a partir do estado passado como argumento."""
         actions_list = []
+
+        max_row = len(state.board.grid) - 1
+        max_col = len(state.board.grid[0]) - 1
+
         for row in range(len(state.board.grid)):
             for col in range(len(state.board.grid[row])):
                 piece = state.board.get_value(row, col)
-                if piece.startswith("L"):
-                    actions_list.append((row, col, True))  # Clockwise rotation only
-                else:
-                    actions_list.append((row, col, True))  # Clockwise rotation
-                    actions_list.append((row, col, False))  # Counter-clockwise rotation
+                piece_type = piece[0]
+                possible_rotations = self.get_possible_rotations(piece_type)
+
+                # Apply restrictions based on piece type and position
+                if piece_type == "F":
+                    if row == 0:
+                        possible_rotations.remove("FC")
+                    if col == 0:
+                        possible_rotations.remove("FE")
+                    if row == max_row:
+                        possible_rotations.remove("FD")
+                    if col == max_col:
+                        possible_rotations.remove("FB")
+                elif piece_type == "B":
+                    if row == 0:
+                        possible_rotations = ["BB"]
+                    if col == 0:
+                        possible_rotations = ["BD"]
+                    if row == max_row:
+                        possible_rotations = ["BC"]
+                    if col == max_col:
+                        possible_rotations = ["BE"]
+                elif piece_type == "V":
+                    if row == 0:
+                        possible_rotations = ["VB", "VE"]
+                    if col == 0:
+                        possible_rotations = ["VB", "VD"]
+                    if row == max_row:
+                        possible_rotations = ["VC", "VD"]
+                    if col == max_col:
+                        possible_rotations = ["VE", "VC"]
+                elif piece_type == "L":
+                    if row == 0:
+                        possible_rotations = ["LH"]
+                    if col == 0:
+                        possible_rotations = ["LV"]
+                    if row == max_row:
+                        possible_rotations = ["LH"]
+                    if col == max_col:
+                        possible_rotations = ["LV"]
+
+                for rotation in possible_rotations:
+                    actions_list.append((row, col, rotation))
+
         return actions_list
 
     def incompatible_pieces_list(self, input_piece: str):
@@ -281,65 +324,34 @@ class PipeMania(search.Problem):
                     return True
         return False
 
-    def result(self, state: 'PipeManiaState', action: Tuple[int, int, bool]) -> 'PipeManiaState':
+    def result(self, state: 'PipeManiaState', action: Tuple[int, int, str]) -> 'PipeManiaState':
         """Retorna o estado resultante de executar a 'action' sobre 'state' passado como argumento."""
-        row, col, clockwise = action
+        row, col, rotation = action
         board = state.board
 
         # Create a copy of the board grid to modify
         new_grid = [row[:] for row in board.grid]
 
-        # Rotate the pipe piece at the specified position
-        piece = new_grid[row][col]
-        new_orientation = ""
-        new_piece = ""
-        if piece.startswith("F"):
-            orientation = piece[1]
-            if orientation == "C":
-                new_orientation = "D" if clockwise else "E"
-            elif orientation == "B":
-                new_orientation = "E" if clockwise else "D"
-            elif orientation == "E":
-                new_orientation = "C" if clockwise else "B"
-            elif orientation == "D":
-                new_orientation = "B" if clockwise else "C"
-            new_piece = "F" + new_orientation
-        elif piece.startswith("B"):
-            orientation = piece[1]
-            if orientation == "C":
-                new_orientation = "D" if clockwise else "E"
-            elif orientation == "B":
-                new_orientation = "E" if clockwise else "D"
-            elif orientation == "E":
-                new_orientation = "C" if clockwise else "B"
-            elif orientation == "D":
-                new_orientation = "B" if clockwise else "C"
-            new_piece = "B" + new_orientation
-        elif piece.startswith("V"):
-            orientation = piece[1]
-            if orientation == "C":
-                new_orientation = "D" if clockwise else "E"
-            elif orientation == "B":
-                new_orientation = "E" if clockwise else "D"
-            elif orientation == "E":
-                new_orientation = "C" if clockwise else "B"
-            elif orientation == "D":
-                new_orientation = "B" if clockwise else "C"
-            new_piece = "V" + new_orientation
-        elif piece.startswith("L"):
-            orientation = piece[1]
-            if orientation == "H":
-                new_orientation = "V" if clockwise else "V"
-            elif orientation == "V":
-                new_orientation = "H" if clockwise else "H"
-            new_piece = "L" + new_orientation
-
-        # Update the grid with the rotated piece
+        # Update the piece at the specified position with the given rotation
+        new_piece = rotation
         new_grid[row][col] = new_piece
 
         # Create a new PipeManiaState object with the updated grid
         new_state = PipeManiaState(Board(new_grid))
         return new_state
+
+    def get_possible_rotations(self, piece_type: str) -> List[str]:
+        """Returns the possible rotations for a given piece type."""
+        if piece_type == "F":
+            return ["FC", "FD", "FE", "FB"]
+        elif piece_type == "B":
+            return ["BC", "BB", "BE", "BD"]
+        elif piece_type == "V":
+            return ["VC", "VB", "VE", "VD"]
+        elif piece_type == "L":
+            return ["LH", "LV"]
+        else:
+            return []
 
     def goal_test(self, state: 'PipeManiaState') -> bool:
         """Retorna True se e só se o estado passado como argumento é
@@ -392,5 +404,4 @@ class PipeMania(search.Problem):
 board = Board.parse_instance()
 problem = PipeMania(board)
 goal_node = search.astar_search(problem)
-print(problem.goal_test(goal_node.state))
 print(goal_node.state.board.print_board())
