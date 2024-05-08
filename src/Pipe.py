@@ -87,6 +87,96 @@ class PipeMania(search.Problem):
             incompatible_list = ['FC', 'FB', 'VB', 'LV', 'BD', 'VD']
         return incompatible_list
 
+    def piece_compatibility_converter(self, state: PipeManiaState, input_piece: str, row: int, col: int) -> bool:
+        """Converts pieces into the check_incompatibility function"""
+        horizontal_positions = state.board.adjacent_horizontal_values(row, col)
+        vertical_positions = state.board.adjacent_vertical_values(row, col)
+        if input_piece.startswith("F"):
+            orientation = input_piece[1]
+            if orientation == "C" and (
+                    vertical_positions[0] is None or vertical_positions[0] in self.incompatible_pieces_list('FC') or
+                    vertical_positions[0].startswith("F")):
+                return False
+
+            elif orientation == "B" and (
+                    vertical_positions[1] is None or vertical_positions[1] in self.incompatible_pieces_list('FB') or
+                    vertical_positions[1].startswith("F")):
+                return False
+
+            elif orientation == "E" and (
+                    horizontal_positions[0] is None or horizontal_positions[0] in self.incompatible_pieces_list('FE') or
+                    horizontal_positions[0].startswith("F")):
+                return False
+
+            elif orientation == "D" and (
+                    horizontal_positions[1] is None or horizontal_positions[1] in self.incompatible_pieces_list('FD') or
+                    horizontal_positions[1].startswith('F')):
+                return False
+
+        elif input_piece.startswith("B"):
+            orientation = input_piece[1]
+            if (orientation == "C" and
+                    (self.check_incompatibility(state, 'FC', row, col) or
+                     self.check_incompatibility(state, 'FE', row, col)
+                     or self.check_incompatibility(state, 'FD', row, col))):
+                return False
+
+            elif (orientation == "B" and
+                  (self.check_incompatibility(state, 'FE', row, col) or
+                   self.check_incompatibility(state, 'FB', row, col)
+                   or self.check_incompatibility(state, 'FD', row, col))):
+                return False
+
+            elif (orientation == "E" and
+                  (self.check_incompatibility(state, 'FC', row, col) or
+                   self.check_incompatibility(state, 'FE', row, col)
+                   or self.check_incompatibility(state, 'FB', row, col))):
+                return False
+
+
+            elif (orientation == "D" and
+                  (self.check_incompatibility(state, 'FC', row, col) or
+                   self.check_incompatibility(state, 'FD', row, col)
+                   or self.check_incompatibility(state, 'FB', row, col))):
+                return False
+
+        elif input_piece.startswith("V"):
+            orientation = state.board.grid[row][col][1]
+            if (orientation == "C" and
+                    (self.check_incompatibility(state, 'FC', row, col) or
+                     self.check_incompatibility(state, 'FE', row, col))):
+                return False
+
+            elif (orientation == "B" and
+                  (self.check_incompatibility(state, 'FD', row, col) or
+                   self.check_incompatibility(state, 'FB', row, col))):
+                return False
+
+
+            elif (orientation == "E" and
+                  (self.check_incompatibility(state, 'FE', row, col) or
+                   self.check_incompatibility(state, 'FB', row, col))):
+                return False
+
+
+            elif (orientation == "D" and
+                  (self.check_incompatibility(state, 'FC', row, col) or
+                   self.check_incompatibility(state, 'FD', row, col))):
+                return False
+
+        elif input_piece.startswith("L"):
+            orientation = state.board.grid[row][col][1]
+            if (orientation == "H" and
+                    (self.check_incompatibility(state, 'FE', row, col) or
+                     self.check_incompatibility(state, 'FD', row, col))):
+                return False
+
+            if (orientation == "V" and
+                    (self.check_incompatibility(state, 'FC', row, col) or
+                     self.check_incompatibility(state, 'FB', row, col))):
+                return False
+        return True
+
     def check_incompatibility(self, state: PipeManiaState, input_piece: str, row: int, col: int) -> bool:
         """Based on a piece input determines which pieces are incompatible with it"""
         horizontal_positions = state.board.adjacent_horizontal_values(row, col)
@@ -174,84 +264,8 @@ class PipeMania(search.Problem):
         print("chegou aqui")
         for row in range(len(state.board.grid)):
             for col in range(len(state.board.grid[row])):
-                horizontal_positions = state.board.adjacent_horizontal_values(row, col)
-                vertical_positions = state.board.adjacent_vertical_values(row, col)
-                if state.board.grid[row][col].startswith("F"):
-                    orientation = state.board.grid[row][col][1]
-                    if orientation == "C" and (vertical_positions[0] is None or vertical_positions[0] in self.incompatible_pieces_list('FC') or vertical_positions[0].startswith("F")):
-                        return False
-
-                    elif orientation == "B" and (vertical_positions[1] is None or vertical_positions[1] in self.incompatible_pieces_list('FB') or vertical_positions[1].startswith("F")):
-                        return False
-
-                    elif orientation == "E" and (horizontal_positions[0] is None or horizontal_positions[0] in self.incompatible_pieces_list('FE') or horizontal_positions[0].startswith("F")):
-                        return False
-
-                    elif orientation == "D" and (horizontal_positions[1] is None or horizontal_positions[1] in self.incompatible_pieces_list('FD') or horizontal_positions[1].startswith('F')):
-                        return False
-
-                elif state.board.grid[row][col].startswith("B"):
-                    orientation = state.board.grid[row][col][1]
-                    if (orientation == "C" and
-                    (self.check_incompatibility(state, 'FC', row, col) or
-                     self.check_incompatibility(state, 'FE', row, col)
-                     or self.check_incompatibility(state, 'FD', row, col))):
-                        return False
-
-                    elif (orientation == "B" and
-                    (self.check_incompatibility(state, 'FE', row, col) or
-                     self.check_incompatibility(state, 'FB', row, col)
-                     or self.check_incompatibility(state, 'FD', row, col))):
-                        return False
-
-                    elif (orientation == "E" and
-                    (self.check_incompatibility(state, 'FC', row, col) or
-                     self.check_incompatibility(state, 'FE', row, col)
-                     or self.check_incompatibility(state, 'FB', row, col))):
-                        return False
-
-
-                    elif (orientation == "D" and
-                    (self.check_incompatibility(state, 'FC', row, col) or
-                     self.check_incompatibility(state, 'FD', row, col)
-                     or self.check_incompatibility(state, 'FB', row, col))):
-                        return False
-
-                elif state.board.grid[row][col].startswith("V"):
-                    orientation = state.board.grid[row][col][1]
-                    if (orientation == "C" and
-                    (self.check_incompatibility(state, 'FC', row, col) or
-                     self.check_incompatibility(state, 'FE', row, col))):
-                        return False
-
-                    elif (orientation == "B" and
-                    (self.check_incompatibility(state, 'FD', row, col) or
-                     self.check_incompatibility(state, 'FB', row, col))):
-                        return False
-
-
-                    elif (orientation == "E" and
-                    (self.check_incompatibility(state, 'FE', row, col) or
-                     self.check_incompatibility(state, 'FB', row, col))):
-                        return False
-
-
-                    elif (orientation == "D" and
-                    (self.check_incompatibility(state, 'FC', row, col) or
-                     self.check_incompatibility(state, 'FD', row, col))):
-                        return False
-
-                elif state.board.grid[row][col].startswith("L"):
-                    orientation = state.board.grid[row][col][1]
-                    if (orientation == "H" and
-                    (self.check_incompatibility(state, 'FE', row, col) or
-                     self.check_incompatibility(state, 'FD', row, col))):
-                        return False
-
-                    if (orientation == "V" and
-                    (self.check_incompatibility(state, 'FC', row, col) or
-                     self.check_incompatibility(state, 'FB', row, col))):
-                        return False
+                if self.piece_compatibility_converter(state, state.board.grid[row][col], row, col) == False:
+                    return False
         return True
 
     def longest_continuous_pipe_length(self, state: 'PipeManiaState') -> int:
@@ -261,7 +275,7 @@ class PipeMania(search.Problem):
         for row in range(len(state.board.grid)):
             for col in range(len(state.board.grid[row])):
                 piece = state.board.get_value(row, col)
-                if piece.startswith("F") and (row, col) not in visited:
+                if (row, col) not in visited:
                     length = self.dfs(state, row, col, visited)
                     max_length = max(max_length, length)
 
@@ -269,7 +283,7 @@ class PipeMania(search.Problem):
 
     def dfs(self, state: PipeManiaState, row: int, col: int, visited: set) -> int:
         if (row < 0 or row >= len(state.board.grid) or col < 0 or col >= len(state.board.grid[row]) or
-                state.board.get_value(row, col) != 'F' or (row, col) in visited):
+                 (row, col) in visited):
             return 0
 
         visited.add((row, col))
@@ -280,7 +294,7 @@ class PipeMania(search.Problem):
             new_row, new_col = row + dr, col + dc
             if 0 <= new_row < len(state.board.grid) and 0 <= new_col < len(state.board.grid[row]):
                 next_piece = state.board.get_value(new_row, new_col)
-                if next_piece.startswith("F") and not self.check_incompatibility(state, next_piece, new_row, new_col):
+                if self.piece_compatibility_converter(state, next_piece, new_row, new_col):
                     length += self.dfs(state, new_row, new_col, visited)  # Recursively explore next piece
         return length
 
@@ -291,7 +305,8 @@ class PipeMania(search.Problem):
 
 
 # Example usage:
-parsed_instance = Board.parse_instance()
-problem = PipeMania(parsed_instance)
-solution = search.greedy_search(problem)
-solution.state.board.print_board()
+board = Board.parse_instance()
+problem = PipeMania(board)
+goal_node = search.greedy_search(problem)
+print(problem.goal_test(goal_node.state))
+print(goal_node.state.board.print_board())
