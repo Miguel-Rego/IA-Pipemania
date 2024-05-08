@@ -81,9 +81,9 @@ class PipeMania(search.Problem):
                     if col == 0:
                         possible_rotations.remove("FE")
                     if row == max_row:
-                        possible_rotations.remove("FD")
-                    if col == max_col:
                         possible_rotations.remove("FB")
+                    if col == max_col:
+                        possible_rotations.remove("FD")
                 elif piece_type == "B":
                     if row == 0:
                         possible_rotations = ["BB"]
@@ -437,7 +437,7 @@ def fix_board_edges(state: 'PipeManiaState') -> 'Board':
                 if row == 0 and col == 0:
                     possible_rotations = ["FD", "FB"]
                 if row == max_row and col == 0:
-                    possible_rotations = ["FC", "FB"]
+                    possible_rotations = ["FC", "FD"]
                 if row == max_row and col == max_col:
                     possible_rotations = ["FC", "FE"]
                 if row == 0 and col == max_col:
@@ -490,5 +490,5 @@ board = Board.parse_instance()
 problem = PipeMania(board)
 fixed_board = fix_board_edges(problem.initial)  # Fix the initial state
 problem_fix = PipeMania(fixed_board)
-goal_node = search.greedy_search(problem_fix)
+goal_node = search.astar_search(problem_fix)
 goal_node.state.board.print_board()
