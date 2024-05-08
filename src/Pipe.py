@@ -177,6 +177,72 @@ class PipeMania(search.Problem):
                 return False
         return True
 
+    def is_piece_left_oriented(self, input_piece: str) -> bool:
+        """Check if piece is left oriented(continues a pipe that comes from left)"""
+        if input_piece.startswith("L"):
+            if input_piece[1] == "H":
+                return True
+        elif input_piece.startswith("V"):
+            if input_piece[1] == "E" or input_piece[1] == "C":
+                return True
+        elif input_piece.startswith("B"):
+            if input_piece[1] != "D":
+                return True
+        elif input_piece.startswith("F"):
+            if input_piece[1] == "E":
+                return True
+        return False
+
+
+    def is_piece_right_oriented(self, input_piece: str) -> bool:
+        """Check if piece is right oriented(continues a pipe that comes from right)"""
+        if input_piece.startswith("L"):
+            if input_piece[1] == "H":
+                return True
+        elif input_piece.startswith("V"):
+            if input_piece[1] == "B" or input_piece[1] == "D":
+                return True
+        elif input_piece.startswith("B"):
+            if input_piece[1] != "E":
+                return True
+        elif input_piece.startswith("F"):
+            if input_piece[1] == "D":
+                return True
+        return False
+
+    def is_piece_up_oriented(self, input_piece: str) -> bool:
+        """Check if piece is up oriented(continues a pipe that comes from above)"""
+        if input_piece.startswith("L"):
+            if input_piece[1] == "V":
+                return True
+        elif input_piece.startswith("V"):
+            if input_piece[1] == "C" or input_piece[1] == "D":
+                return True
+        elif input_piece.startswith("B"):
+            if input_piece[1] != "B":
+                return True
+        elif input_piece.startswith("F"):
+            if input_piece[1] == "C":
+                return True
+        return False
+
+    def is_piece_down_oriented(self, input_piece: str) -> bool:
+        """Check if piece is down oriented(continues a pipe that comes from below)"""
+        if input_piece.startswith("L"):
+            if input_piece[1] == "V":
+                return True
+        elif input_piece.startswith("V"):
+            if input_piece[1] == "B" or input_piece[1] == "E":
+                return True
+        elif input_piece.startswith("B"):
+            if input_piece[1] != "C":
+                return True
+        elif input_piece.startswith("F"):
+            if input_piece[1] == "B":
+                return True
+        return False
+
+
     def check_incompatibility(self, state: PipeManiaState, input_piece: str, row: int, col: int) -> bool:
         """Based on a piece input determines which pieces are incompatible with it"""
         horizontal_positions = state.board.adjacent_horizontal_values(row, col)
@@ -195,6 +261,24 @@ class PipeMania(search.Problem):
             elif orientation == "D" and (horizontal_positions[1] is None or horizontal_positions[1] in self.incompatible_pieces_list('FD')):
                 return True
 
+        return False
+
+    def check_compatibility_pair(self, first_piece: str, first_row: int, first_col: int, second_piece: str, second_row: int, second_col: int):
+        """Based on a pair of pieces determines if they are compatible between each other"""
+        if first_row == second_row:
+            if first_col < second_col:
+                if self.is_piece_right_oriented(first_piece) and self.is_piece_left_oriented(second_piece):
+                    return True
+            elif first_col > second_col:
+                if self.is_piece_right_oriented(second_piece) and self.is_piece_left_oriented(first_piece):
+                    return True
+        elif first_col == second_col:
+            if first_row < second_row:
+                if self.is_piece_down_oriented(first_piece) and  self.is_piece_up_oriented(second_piece):
+                    return True
+            elif first_row > second_row:
+                if self.is_piece_down_oriented(second_piece) and self.is_piece_up_oriented(first_piece):
+                    return True
         return False
 
     def result(self, state: 'PipeManiaState', action: Tuple[int, int, bool]) -> 'PipeManiaState':
@@ -290,13 +374,11 @@ class PipeMania(search.Problem):
         length = 1  # Start with length 1 for the current piece
 
         # Check compatibility with adjacent pieces
-        if not (self.piece_compatibility_converter(state, state.board.grid[row][col], row, col)):
-            return length
         for dr, dc in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
             new_row, new_col = row + dr, col + dc
             if 0 <= new_row < len(state.board.grid) and 0 <= new_col < len(state.board.grid[row]):
                 next_piece = state.board.get_value(new_row, new_col)
-                if self.piece_compatibility_converter(state, next_piece, new_row, new_col):
+                if self.check_compatibility_pair(state.board.grid[row][col], row, col, next_piece, new_row, new_col) and (new_row, new_col) not in visited:
                     length += self.dfs(state, new_row, new_col, visited)  # Recursively explore next piece
         return length
 
