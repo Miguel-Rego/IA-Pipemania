@@ -264,7 +264,7 @@ class PipeMania(search.Problem):
         print("chegou aqui")
         for row in range(len(state.board.grid)):
             for col in range(len(state.board.grid[row])):
-                if self.piece_compatibility_converter(state, state.board.grid[row][col], row, col) == False:
+                if not self.piece_compatibility_converter(state, state.board.grid[row][col], row, col):
                     return False
         return True
 
@@ -275,7 +275,7 @@ class PipeMania(search.Problem):
         for row in range(len(state.board.grid)):
             for col in range(len(state.board.grid[row])):
                 piece = state.board.get_value(row, col)
-                if (row, col) not in visited:
+                if (row, col) not in visited and piece.startswith("F"):  # Start exploring from a piece of the pipe
                     length = self.dfs(state, row, col, visited)
                     max_length = max(max_length, length)
 
@@ -290,6 +290,8 @@ class PipeMania(search.Problem):
         length = 1  # Start with length 1 for the current piece
 
         # Check compatibility with adjacent pieces
+        if not (self.piece_compatibility_converter(state, state.board.grid[row][col], row, col)):
+            return length
         for dr, dc in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
             new_row, new_col = row + dr, col + dc
             if 0 <= new_row < len(state.board.grid) and 0 <= new_col < len(state.board.grid[row]):
