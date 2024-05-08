@@ -1,7 +1,7 @@
 import sys
 from typing import List, Tuple
 import search
-from src.search import Node
+from search import Node
 
 
 class PipeManiaState:
@@ -95,13 +95,25 @@ class PipeMania(search.Problem):
                         possible_rotations = ["BE"]
                 elif piece_type == "V":
                     if row == 0:
-                        possible_rotations = ["VB", "VE"]
+                        if "VD" in possible_rotations:
+                            possible_rotations.remove("VD")
+                        if "VC" in possible_rotations:
+                            possible_rotations.remove("VC")
                     if col == 0:
-                        possible_rotations = ["VB", "VD"]
+                        if "VC" in possible_rotations:
+                            possible_rotations.remove("VC")
+                        if "VE" in possible_rotations:
+                            possible_rotations.remove("VE")
                     if row == max_row:
-                        possible_rotations = ["VC", "VD"]
+                        if "VE" in possible_rotations:
+                            possible_rotations.remove("VB")
+                        if "VE" in possible_rotations:
+                            possible_rotations.remove("VE")
                     if col == max_col:
-                        possible_rotations = ["VE", "VC"]
+                        if "VD" in possible_rotations:
+                            possible_rotations.remove("VD")
+                        if "VB" in possible_rotations:
+                            possible_rotations.remove("VB")
                 elif piece_type == "L":
                     if row == 0:
                         possible_rotations = ["LH"]
@@ -112,16 +124,17 @@ class PipeMania(search.Problem):
                     if col == max_col:
                         possible_rotations = ["LV"]
 
+                if piece in possible_rotations:
+                    possible_rotations.remove(piece)
                 for rotation in possible_rotations:
                     actions_list.append((row, col, rotation))
-
         return actions_list
 
     def incompatible_pieces_list(self, input_piece: str):
         """Based on a piece input determines which pieces are incompatible with it"""
         incompatible_list = []
         if input_piece == 'FC':
-            incompatible_list = ['BC', 'VC', 'LH', 'FE', 'FD']
+            incompatible_list = ['BC', 'VC', 'LH', 'FE', 'FD', 'VD']
         if input_piece == 'FB':
             incompatible_list = ['FE', 'FD', 'BB', 'VB', 'LH', 'VE']
         if input_piece == 'FE':
@@ -324,6 +337,7 @@ class PipeMania(search.Problem):
                     return True
         return False
 
+
     def result(self, state: 'PipeManiaState', action: Tuple[int, int, str]) -> 'PipeManiaState':
         """Retorna o estado resultante de executar a 'action' sobre 'state' passado como argumento."""
         row, col, rotation = action
@@ -399,9 +413,82 @@ class PipeMania(search.Problem):
         print(len(state.board.grid) * len(state.board.grid) - self.longest_continuous_pipe_length(state))
         return len(state.board.grid) * len(state.board.grid) - self.longest_continuous_pipe_length(state)
 
+def fix_board_edges(state: 'PipeManiaState') -> 'Board':
+    """Fixes the rotations of the pieces on the edges of the board."""
+    new_grid = [row[:] for row in state.board.grid]
+    max_row = len(new_grid) - 1
+    max_col = len(new_grid[0]) - 1
+
+    for row in range(len(new_grid)):
+        for col in range(len(new_grid[row])):
+            possible_rotations = []
+            piece = new_grid[row][col]
+            piece_type = piece[0]
+
+            if piece_type == "F":
+                if row == 0:
+                    possible_rotations = ["FD", "FE", "FB"]
+                if col == 0:
+                    possible_rotations = ["FC", "FD", "FB"]
+                if row == max_row:
+                    possible_rotations = ["FC", "FE", "FB"]
+                if col == max_col:
+                    possible_rotations = ["FC", "FD", "FE"]
+                if row == 0 and col == 0:
+                    possible_rotations = ["FD", "FB"]
+                if row == max_row and col == 0:
+                    possible_rotations = ["FC", "FB"]
+                if row == max_row and col == max_col:
+                    possible_rotations = ["FC", "FE"]
+                if row == 0 and col == max_col:
+                    possible_rotations = ["FD", "FE"]
+            elif piece_type == "B":
+                if row == 0:
+                    possible_rotations = ["BB"]
+                if col == 0:
+                    possible_rotations = ["BD"]
+                if row == max_row:
+                    possible_rotations = ["BC"]
+                if col == max_col:
+                    possible_rotations = ["BE"]
+            elif piece_type == "V":
+                if row == 0:
+                    possible_rotations = ["VB", "VE"]
+                if col == 0:
+                    possible_rotations = ["VB", "VD"]
+                if row == max_row:
+                    possible_rotations = ["VC", "VD"]
+                if col == max_col:
+                    possible_rotations = ["VE", "VC"]
+                if row == 0 and col == 0:
+                    possible_rotations = ["VB"]
+                if row == max_row and col == 0:
+                    possible_rotations = ["VD"]
+                if row == max_row and col == max_col:
+                    possible_rotations = ["VC"]
+                if row == 0 and col == max_col:
+                    possible_rotations = ["VE"]
+            elif piece_type == "L":
+                if row == 0:
+                    possible_rotations = ["LH"]
+                if col == 0:
+                    possible_rotations = ["LV"]
+                if row == max_row:
+                    possible_rotations = ["LH"]
+                if col == max_col:
+                    possible_rotations = ["LV"]
+
+            # Update the piece with the fixed rotations
+            if len(possible_rotations) > 0:
+                new_grid[row][col] = possible_rotations[0]
+
+    return Board(new_grid)
+
 
 # Example usage:
 board = Board.parse_instance()
 problem = PipeMania(board)
-goal_node = search.astar_search(problem)
-print(goal_node.state.board.print_board())
+fixed_board = fix_board_edges(problem.initial)  # Fix the initial state
+problem_fix = PipeMania(fixed_board)
+goal_node = search.greedy_search(problem_fix)
+goal_node.state.board.print_board()
