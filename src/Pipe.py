@@ -403,5 +403,5 @@ class PipeMania(search.Problem):
 # Example usage:
 board = Board.parse_instance()
 problem = PipeMania(board)
-goal_node = search.astar_search(problem)
-print(goal_node.state.board.print_board())
+goal_node = search.greedy_search(problem)
+goal_node.state.board.print_board()
