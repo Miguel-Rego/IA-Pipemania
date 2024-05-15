@@ -81,9 +81,9 @@ class PipeMania(search.Problem):
                     if col == 0:
                         possible_rotations.remove("FE")
                     if row == max_row:
-                        possible_rotations.remove("FB")
-                    if col == max_col:
                         possible_rotations.remove("FD")
+                    if col == max_col:
+                        possible_rotations.remove("FB")
                 elif piece_type == "B":
                     if row == 0:
                         possible_rotations = ["BB"]
@@ -412,6 +412,70 @@ class PipeMania(search.Problem):
         state = node.state
         print(len(state.board.grid) * len(state.board.grid) - self.longest_continuous_pipe_length(state))
         return len(state.board.grid) * len(state.board.grid) - self.longest_continuous_pipe_length(state)
+
+    def ac3(self, X, D, R1, R2):
+        """AC3 algorithm for constraint satisfaction problems."""
+        for x in X:
+            # Initial domains are made consistent with unary constraints.
+            D[x] = [vx for vx in D[x] if R1(x, vx)]
+            # 'worklist' contains all arcs we wish to prove consistent or not.
+        worklist = {(x, y) for x in X for y in X if (x != y) and (R2(x, D[x], y, D[y]) or R2(y, D[y], x, D[x]))}
+
+        while worklist:
+            x, y = worklist.pop()
+            if self.arc_reduce(x, y, D, R2):
+                if not D[x]:
+                    return False
+                else:
+                    worklist |= {(z, x) for z in X if (z != y) and (R2(x, D[x], z, D[z]) or R2(z, D[z], x, D[x]))}
+        return True
+
+    def arc_reduce(self, x, y, D, R2):
+        """Arc reduction for the AC3 algorithm."""
+        change = False
+        for vx in D[x]:
+            vy = next((vy for vy in D[y] if R2(x, vx, y, vy)), None)
+            if vy is None:
+                D[x].remove(vx)
+                change = True
+        return change
+
+    def solve(self):
+        """Solves the PipeMania problem using AC3 algorithm."""
+        X = [(i, j) for i in range(len(self.initial.board.grid)) for j in range(len(self.initial.board.grid[0]))]
+        D = {}
+        # Populate D using the actions method
+        for row in range(len(self.initial.board.grid)):
+            for col in range(len(self.initial.board.grid[row])):
+                actions = self.actions(
+                    PipeManiaState(Board(self.initial.board.grid)))  # Generate actions for the initial state
+                pieces = [action[2] for action in actions if
+                          (action[0], action[1]) == (row, col)]  # Extract pieces from actions
+                D[(row, col)] = pieces  # Store all possible pieces for this cell
+
+        # Unary constraints
+        def R1(x, vx):
+            return True  # No unary constraints
+
+        # Binary constraints
+        def R2(x1, vx, x2, vy):
+            row1, col1 = x1
+            row2, col2 = x2
+            if row1 == row2:
+                return vy not in self.incompatible_pieces_list(vx)
+            elif col1 == col2:
+                return vx not in self.incompatible_pieces_list(vy)
+            else:
+                return True
+
+        if self.ac3(X, D, R1, R2):
+            # If AC3 succeeded, return the result
+            return PipeManiaState(Board([[D[(i, j)][0] for j in range(len(self.initial.board.grid[0]))] for i in
+                                         range(len(self.initial.board.grid))]))
+        else:
+            # If AC3 failed, return None
+            return None
+
 
 def fix_board_edges(state: 'PipeManiaState') -> 'Board':
     """Fixes the rotations of the pieces on the edges of the board."""
