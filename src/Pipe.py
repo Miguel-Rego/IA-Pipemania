@@ -220,6 +220,7 @@ class PipeMania(search.Problem):
                 return False
         return True
 
+
     def is_piece_left_oriented(self, input_piece: str) -> bool:
         """Check if piece is left oriented(continues a pipe that comes from left)"""
         if input_piece.startswith("L"):
