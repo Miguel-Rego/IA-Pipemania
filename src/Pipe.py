@@ -38,6 +38,45 @@ class Board:
             domain.append(domain_row)
 
         return domain
+
+    def propagate_constraints(self):
+        rows = len(self.domain)
+        cols = len(self.domain[0])
+
+        # Iterate through the domain in a square pattern
+        for i in range(rows + cols - 1):
+            for row in range(max(0, i - cols + 1), min(i + 1, rows)):
+                col = i - row
+
+                # Check compatibility with adjacent cells
+                for d_row, d_col in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
+                    adj_row = row + d_row
+                    adj_col = col + d_col
+
+                    # Ensure adjacent cell is within bounds
+                    if 0 <= adj_row < rows and 0 <= adj_col < cols:
+                        for pipe1 in self.domain[row][col]:
+                            for pipe2 in self.domain[adj_row][adj_col]:
+                                constraint_success = False
+
+                                # Check compatibility
+                                if is_neighbor(pipe1, pipe2):
+                                    if check_compatibility(row, col, adj_row, adj_col):
+                                        constraint_success = True
+                                        break
+                                else:
+                                    if needs_connection(row, col, adj_row, adj_col):
+                                        constraint_success = False
+                                    else:
+                                        constraint_success = True  # No constraint, still valid
+                                        break
+
+                            if not constraint_success:
+                                # Remove pipe1 from domain
+                                self.domain[row][col].remove(pipe1)
+
+        return self.domain
+
     def get_possible_rotations(self, piece_type: str) -> List[str]:
         """Returns the possible rotations for a given piece type."""
         if piece_type == "F":
@@ -443,6 +482,7 @@ class PipeMania(search.Problem):
         state = node.state
         print(len(state.board.grid) * len(state.board.grid) - self.longest_continuous_pipe_length(state))
         return len(state.board.grid) * len(state.board.grid) - self.longest_continuous_pipe_length(state)
+
 
     def ac3(self, X, D, R1, R2):
         """AC3 algorithm for constraint satisfaction problems."""
