@@ -21,6 +21,7 @@ class Board:
     def __init__(self, grid: List[List[str]]):
         self.grid = grid  # Store the grid
         self.domain = self.calculate_domain()  # Initialize the domain attribute
+        self.propagate_constraints()
 
     def calculate_domain(self) -> list:
         """Calculates the domain for each cell based on the initial grid."""
@@ -52,6 +53,7 @@ class Board:
                 for d_row, d_col in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
                     adj_row = row + d_row
                     adj_col = col + d_col
+                    constraint_success = False
 
                     # Ensure adjacent cell is within bounds
                     if 0 <= adj_row < rows and 0 <= adj_col < cols:
@@ -60,22 +62,130 @@ class Board:
                                 constraint_success = False
 
                                 # Check compatibility
-                                if is_neighbor(pipe1, pipe2):
-                                    if check_compatibility(row, col, adj_row, adj_col):
-                                        constraint_success = True
-                                        break
+                                if col == adj_col:
+                                    if row < adj_row:
+                                        if self.is_piece_right_oriented(pipe1):
+                                            if self.check_compatibility_pair(pipe1, row, col, pipe2, adj_row, adj_col):
+                                                constraint_success = True
+                                                break
+                                    if row > adj_row:
+                                        if self.is_piece_left_oriented(pipe1):
+                                            if self.check_compatibility_pair(pipe1, row, col, pipe2, adj_row, adj_col):
+                                                constraint_success = True
+                                                break
+                                elif row == adj_row:
+                                    if col < adj_col:
+                                        if self.is_piece_down_oriented(pipe1):
+                                            if self.check_compatibility_pair(pipe1, row, col, pipe2, adj_row, adj_col):
+                                                constraint_success = True
+                                                break
+                                    if col > adj_col:
+                                        if self.is_piece_up_oriented(pipe1):
+                                            if self.check_compatibility_pair(pipe1, row, col, pipe2, adj_row, adj_col):
+                                                constraint_success = True
+                                                break
                                 else:
-                                    if needs_connection(row, col, adj_row, adj_col):
-                                        constraint_success = False
-                                    else:
-                                        constraint_success = True  # No constraint, still valid
-                                        break
-
+                                    if col == adj_col:
+                                        if row < adj_row:
+                                            if self.is_piece_left_oriented(pipe2):
+                                                constraint_success = False
+                                        if row > adj_row:
+                                            if self.is_piece_right_oriented(pipe2):
+                                                constraint_success = False
+                                    elif row == adj_row:
+                                        if col < adj_col:
+                                            if self.is_piece_up_oriented(pipe2):
+                                                constraint_success = False
+                                        if col > adj_col:
+                                            if self.is_piece_down_oriented(pipe2):
+                                                constraint_success = False
                             if not constraint_success:
                                 # Remove pipe1 from domain
                                 self.domain[row][col].remove(pipe1)
 
-        return self.domain
+    def check_compatibility_pair(self, first_piece: str, first_row: int, first_col: int, second_piece: str, second_row: int, second_col: int):
+        """Based on a pair of pieces determines if they are compatible between each other"""
+        if first_row == second_row:
+            if first_col < second_col:
+                if self.is_piece_right_oriented(first_piece) and self.is_piece_left_oriented(second_piece):
+                    return True
+            elif first_col > second_col:
+                if self.is_piece_right_oriented(second_piece) and self.is_piece_left_oriented(first_piece):
+                    return True
+        elif first_col == second_col:
+            if first_row < second_row:
+                if self.is_piece_down_oriented(first_piece) and  self.is_piece_up_oriented(second_piece):
+                    return True
+            elif first_row > second_row:
+                if self.is_piece_down_oriented(second_piece) and self.is_piece_up_oriented(first_piece):
+                    return True
+        return False
+
+    def is_piece_left_oriented(self, input_piece: str) -> bool:
+        """Check if piece is left oriented(continues a pipe that comes from left)"""
+        if input_piece.startswith("L"):
+            if input_piece[1] == "H":
+                return True
+        elif input_piece.startswith("V"):
+            if input_piece[1] == "E" or input_piece[1] == "C":
+                return True
+        elif input_piece.startswith("B"):
+            if input_piece[1] != "D":
+                return True
+        elif input_piece.startswith("F"):
+            if input_piece[1] == "E":
+                return True
+        return False
+
+
+    def is_piece_right_oriented(self, input_piece: str) -> bool:
+        """Check if piece is right oriented(continues a pipe that comes from right)"""
+        if input_piece.startswith("L"):
+            if input_piece[1] == "H":
+                return True
+        elif input_piece.startswith("V"):
+            if input_piece[1] == "B" or input_piece[1] == "D":
+                return True
+        elif input_piece.startswith("B"):
+            if input_piece[1] != "E":
+                return True
+        elif input_piece.startswith("F"):
+            if input_piece[1] == "D":
+                return True
+        return False
+
+    def is_piece_up_oriented(self, input_piece: str) -> bool:
+        """Check if piece is up oriented(continues a pipe that comes from above)"""
+        if input_piece.startswith("L"):
+            if input_piece[1] == "V":
+                return True
+        elif input_piece.startswith("V"):
+            if input_piece[1] == "C" or input_piece[1] == "D":
+                return True
+        elif input_piece.startswith("B"):
+            if input_piece[1] != "B":
+                return True
+        elif input_piece.startswith("F"):
+            if input_piece[1] == "C":
+                return True
+        return False
+
+    def is_piece_down_oriented(self, input_piece: str) -> bool:
+        """Check if piece is down oriented(continues a pipe that comes from below)"""
+        if input_piece.startswith("L"):
+            if input_piece[1] == "V":
+                return True
+        elif input_piece.startswith("V"):
+            if input_piece[1] == "B" or input_piece[1] == "E":
+                return True
+        elif input_piece.startswith("B"):
+            if input_piece[1] != "C":
+                return True
+        elif input_piece.startswith("F"):
+            if input_piece[1] == "B":
+                return True
+        return False
+
 
     def get_possible_rotations(self, piece_type: str) -> List[str]:
         """Returns the possible rotations for a given piece type."""
