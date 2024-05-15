@@ -68,37 +68,30 @@ class Board:
                                             if self.check_compatibility_pair(pipe1, row, col, pipe2, adj_row, adj_col):
                                                 constraint_success = True
                                                 break
+                                        elif self.is_piece_left_oriented(pipe2):
+                                            constraint_success = False
                                     if row > adj_row:
                                         if self.is_piece_left_oriented(pipe1):
                                             if self.check_compatibility_pair(pipe1, row, col, pipe2, adj_row, adj_col):
                                                 constraint_success = True
                                                 break
+                                        elif self.is_piece_right_oriented(pipe2):
+                                            constraint_success = False
                                 elif row == adj_row:
                                     if col < adj_col:
                                         if self.is_piece_down_oriented(pipe1):
                                             if self.check_compatibility_pair(pipe1, row, col, pipe2, adj_row, adj_col):
                                                 constraint_success = True
                                                 break
+                                        elif self.is_piece_up_oriented(pipe2):
+                                            constraint_success = False
                                     if col > adj_col:
                                         if self.is_piece_up_oriented(pipe1):
                                             if self.check_compatibility_pair(pipe1, row, col, pipe2, adj_row, adj_col):
                                                 constraint_success = True
                                                 break
-                                else:
-                                    if col == adj_col:
-                                        if row < adj_row:
-                                            if self.is_piece_left_oriented(pipe2):
-                                                constraint_success = False
-                                        if row > adj_row:
-                                            if self.is_piece_right_oriented(pipe2):
-                                                constraint_success = False
-                                    elif row == adj_row:
-                                        if col < adj_col:
-                                            if self.is_piece_up_oriented(pipe2):
-                                                constraint_success = False
-                                        if col > adj_col:
-                                            if self.is_piece_down_oriented(pipe2):
-                                                constraint_success = False
+                                        elif self.is_piece_right_oriented(pipe2):
+                                            constraint_success = False
                             if not constraint_success:
                                 # Remove pipe1 from domain
                                 self.domain[row][col].remove(pipe1)
@@ -242,72 +235,7 @@ class PipeMania(search.Problem):
 
     def actions(self, state: 'PipeManiaState') -> List[Tuple[int, int, str]]:
         """Retorna uma lista de ações que podem ser executadas a partir do estado passado como argumento."""
-        actions_list = []
-
-        max_row = len(state.board.grid) - 1
-        max_col = len(state.board.grid[0]) - 1
-
-        for row in range(len(state.board.grid)):
-            for col in range(len(state.board.grid[row])):
-                piece = state.board.get_value(row, col)
-                piece_type = piece[0]
-                possible_rotations = self.get_possible_rotations(piece_type)
-
-                # Apply restrictions based on piece type and position
-                if piece_type == "F":
-                    if row == 0:
-                        possible_rotations.remove("FC")
-                    if col == 0:
-                        possible_rotations.remove("FE")
-                    if row == max_row:
-                        possible_rotations.remove("FD")
-                    if col == max_col:
-                        possible_rotations.remove("FB")
-                elif piece_type == "B":
-                    if row == 0:
-                        possible_rotations = ["BB"]
-                    if col == 0:
-                        possible_rotations = ["BD"]
-                    if row == max_row:
-                        possible_rotations = ["BC"]
-                    if col == max_col:
-                        possible_rotations = ["BE"]
-                elif piece_type == "V":
-                    if row == 0:
-                        if "VD" in possible_rotations:
-                            possible_rotations.remove("VD")
-                        if "VC" in possible_rotations:
-                            possible_rotations.remove("VC")
-                    if col == 0:
-                        if "VC" in possible_rotations:
-                            possible_rotations.remove("VC")
-                        if "VE" in possible_rotations:
-                            possible_rotations.remove("VE")
-                    if row == max_row:
-                        if "VE" in possible_rotations:
-                            possible_rotations.remove("VB")
-                        if "VE" in possible_rotations:
-                            possible_rotations.remove("VE")
-                    if col == max_col:
-                        if "VD" in possible_rotations:
-                            possible_rotations.remove("VD")
-                        if "VB" in possible_rotations:
-                            possible_rotations.remove("VB")
-                elif piece_type == "L":
-                    if row == 0:
-                        possible_rotations = ["LH"]
-                    if col == 0:
-                        possible_rotations = ["LV"]
-                    if row == max_row:
-                        possible_rotations = ["LH"]
-                    if col == max_col:
-                        possible_rotations = ["LV"]
-
-                if piece in possible_rotations:
-                    possible_rotations.remove(piece)
-                for rotation in possible_rotations:
-                    actions_list.append((row, col, rotation))
-        return actions_list
+        return state.board.domain
 
     def incompatible_pieces_list(self, input_piece: str):
         """Based on a piece input determines which pieces are incompatible with it"""
@@ -594,68 +522,6 @@ class PipeMania(search.Problem):
         return len(state.board.grid) * len(state.board.grid) - self.longest_continuous_pipe_length(state)
 
 
-    def ac3(self, X, D, R1, R2):
-        """AC3 algorithm for constraint satisfaction problems."""
-        for x in X:
-            # Initial domains are made consistent with unary constraints.
-            D[x] = [vx for vx in D[x] if R1(x, vx)]
-            # 'worklist' contains all arcs we wish to prove consistent or not.
-        worklist = {(x, y) for x in X for y in X if (x != y) and (R2(x, D[x], y, D[y]) or R2(y, D[y], x, D[x]))}
-
-        while worklist:
-            x, y = worklist.pop()
-            if self.arc_reduce(x, y, D, R2):
-                if not D[x]:
-                    return False
-                else:
-                    worklist |= {(z, x) for z in X if (z != y) and (R2(x, D[x], z, D[z]) or R2(z, D[z], x, D[x]))}
-        return True
-
-    def arc_reduce(self, x, y, D, R2):
-        """Arc reduction for the AC3 algorithm."""
-        change = False
-        for vx in D[x]:
-            vy = next((vy for vy in D[y] if R2(x, vx, y, vy)), None)
-            if vy is None:
-                D[x].remove(vx)
-                change = True
-        return change
-
-    def solve(self):
-        """Does a initial solve of the PipeMania problem using AC3 algorithm."""
-        X = [(i, j) for i in range(len(self.initial.board.grid)) for j in range(len(self.initial.board.grid[0]))]
-        D = {}
-        # Populate D using the actions method
-        for row in range(len(self.initial.board.grid)):
-            for col in range(len(self.initial.board.grid[row])):
-                actions = self.actions(
-                    PipeManiaState(Board(self.initial.board.grid)))  # Generate actions for the initial state
-                pieces = [action[2] for action in actions if
-                          (action[0], action[1]) == (row, col)]  # Extract pieces from actions
-                D[(row, col)] = pieces  # Store all possible pieces for this cell
-
-        # Unary constraints
-        def R1(x, vx):
-            return True  # No unary constraints
-
-        # Binary constraints
-        def R2(x1, vx, x2, vy):
-            row1, col1 = x1
-            row2, col2 = x2
-            if row1 == row2:
-                return vy not in self.incompatible_pieces_list(vx)
-            elif col1 == col2:
-                return vx not in self.incompatible_pieces_list(vy)
-            else:
-                return True
-
-        if self.ac3(X, D, R1, R2):
-            # If AC3 succeeded, return the result
-            return PipeManiaState(Board([[D[(i, j)][0] for j in range(len(self.initial.board.grid[0]))] for i in
-                                         range(len(self.initial.board.grid))]))
-
-
-
 def fix_board_edges(grid: List[List[str]]) -> List[List[str]]:
     """Fixes the rotations of the pieces on the edges of the board."""
     new_grid = [row[:] for row in grid]
@@ -731,8 +597,6 @@ def fix_board_edges(grid: List[List[str]]) -> List[List[str]]:
 # Example usage:
 board = Board.parse_instance()
 initial_grid = board.grid
-fixed_grid = fix_board_edges(initial_grid)  # Fix the initial grid
-fixed_board = Board(fixed_grid)
-problem_fix = PipeMania(fixed_board).solve()
+problem_fix = PipeMania(board)
 goal_node = search.astar_search(problem_fix)
 goal_node.state.board.print_board()
