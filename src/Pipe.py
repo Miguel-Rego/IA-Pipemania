@@ -407,6 +407,7 @@ class PipeMania(search.Problem):
                     length += self.dfs(state, new_row, new_col, visited)  # Recursively explore next piece
         return length
 
+
     def h(self, node: 'Node') -> float:
         """Função heuristica utilizada para a procura A*."""
         state = node.state
