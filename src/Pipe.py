@@ -20,6 +20,36 @@ class Board:
 
     def __init__(self, grid: List[List[str]]):
         self.grid = grid  # Store the grid
+        self.domain = self.calculate_domain()  # Initialize the domain attribute
+
+    def calculate_domain(self) -> list:
+        """Calculates the domain for each cell based on the initial grid."""
+        domain = []
+
+        # Fix the edges of the board
+        fixed_board_domain = fix_board_edges(self.grid)
+
+        for row in range(len(self.grid)):
+            domain_row = []
+            for col in range(len(self.grid[row])):
+                piece = fixed_board_domain[row][col]  # Use the fixed grid
+                piece_type = piece[0]
+                domain_row.append(self.get_possible_rotations(piece_type))
+            domain.append(domain_row)
+
+        return domain
+    def get_possible_rotations(self, piece_type: str) -> List[str]:
+        """Returns the possible rotations for a given piece type."""
+        if piece_type == "F":
+            return ["FC", "FD", "FE", "FB"]
+        elif piece_type == "B":
+            return ["BC", "BB", "BE", "BD"]
+        elif piece_type == "V":
+            return ["VC", "VB", "VE", "VD"]
+        elif piece_type == "L":
+            return ["LH", "LV"]
+        else:
+            return []
 
     def get_value(self, row: int, col: int) -> str:
         """Devolve o valor na respetiva posição do tabuleiro."""
@@ -442,7 +472,7 @@ class PipeMania(search.Problem):
         return change
 
     def solve(self):
-        """Solves the PipeMania problem using AC3 algorithm."""
+        """Does a initial solve of the PipeMania problem using AC3 algorithm."""
         X = [(i, j) for i in range(len(self.initial.board.grid)) for j in range(len(self.initial.board.grid[0]))]
         D = {}
         # Populate D using the actions method
@@ -473,14 +503,12 @@ class PipeMania(search.Problem):
             # If AC3 succeeded, return the result
             return PipeManiaState(Board([[D[(i, j)][0] for j in range(len(self.initial.board.grid[0]))] for i in
                                          range(len(self.initial.board.grid))]))
-        else:
-            # If AC3 failed, return None
-            return None
 
 
-def fix_board_edges(state: 'PipeManiaState') -> 'Board':
+
+def fix_board_edges(grid: List[List[str]]) -> List[List[str]]:
     """Fixes the rotations of the pieces on the edges of the board."""
-    new_grid = [row[:] for row in state.board.grid]
+    new_grid = [row[:] for row in grid]
     max_row = len(new_grid) - 1
     max_col = len(new_grid[0]) - 1
 
@@ -547,13 +575,14 @@ def fix_board_edges(state: 'PipeManiaState') -> 'Board':
             if len(possible_rotations) > 0:
                 new_grid[row][col] = possible_rotations[0]
 
-    return Board(new_grid)
+    return new_grid
 
 
 # Example usage:
 board = Board.parse_instance()
-problem = PipeMania(board)
-fixed_board = fix_board_edges(problem.initial)  # Fix the initial state
-problem_fix = PipeMania(fixed_board)
+initial_grid = board.grid
+fixed_grid = fix_board_edges(initial_grid)  # Fix the initial grid
+fixed_board = Board(fixed_grid)
+problem_fix = PipeMania(fixed_board).solve()
 goal_node = search.astar_search(problem_fix)
 goal_node.state.board.print_board()
