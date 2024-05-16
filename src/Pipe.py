@@ -48,23 +48,16 @@ class Board:
 
         for layer in range(layers):
             for pipe1 in range(layer, cols - layer):
+                self.propagate_algorithm(layer, pipe1)
 
+            for pipe1 in range(layer + 1, rows - layer):
+                self.propagate_algorithm(pipe1, cols - layer - 1)
 
-    def propagate_algorithm(self, row: int, col: int):
-        for pipe1 in self.domain[row][col]:
+            for pipe1 in range(cols - layer - 2, layer - 1, -1):
+                self.propagate_algorithm(rows - layer - 1, pipe1)
 
-            if self.is_optimal(row, col):
-                neighbours = self.get_neighbours(row, col, pipe1)
-                for neighbour in neighbours:
-                    for val in self.domain[neighbour[0]][neighbour[1]]:
-                        if not self.check_compatibility_pair(val, neighbour[0], neighbour[1], pipe1, row, col):
-                            self.domain[neighbour[0]][neighbour[1]].remove(val)
-                not_neighbours = self.get_not_neighbours(row, col, pipe1)
-                    for not_neighbour in not_neighbours:
-                        for val in self.domain[not_neighbour[0]][not_neighbour[1]]:
-                            if self.neighbour_points_towards
-
-
+            for pipe1 in range(rows - layer - 2, layer, -1):
+                self.propagate_algorithm(pipe1, layer)
 
 
 
@@ -289,6 +282,36 @@ class Board:
         """Prints the board grid."""
         for row in self.grid:
             print('\t'.join(row))
+
+
+    def propagate_algorithm(self, row: int, col: int):
+        needs_connection = self.needs_connection(row, col)
+        for pipe1 in self.domain[row][col]:
+            neighbours = self.get_neighbours(row, col, pipe1)
+
+            if self.is_optimal(row, col):
+                for neighbour in neighbours:
+                    for val in self.domain[neighbour[0]][neighbour[1]]:
+                        if not self.check_compatibility_pair(val, neighbour[0], neighbour[1], pipe1, row, col):
+                            self.domain[neighbour[0]][neighbour[1]].remove(val)
+                not_neighbours = self.get_not_neighbours(row, col, pipe1)
+                for not_neighbour in not_neighbours:
+                    for val in self.domain[not_neighbour[0]][not_neighbour[1]]:
+                        if self.neighbour_points_towards(not_neighbour[0], not_neighbour[1], val, row, col):
+                            self.domain[not_neighbour[0]][not_neighbour[1]].remove(val)
+            else:
+                if len(needs_connection) != 0:
+                    for direction in needs_connection:
+                        dir_neighbours = self.get_neighbour_in_directions(row, col, direction)
+                        for val in self.domain[dir_neighbours[0]][dir_neighbours[1]]:
+                            if not self.check_compatibility_pair(val, dir_neighbours[0], dir_neighbours[1], pipe1, row, col):
+                                self.domain[dir_neighbours[0]][dir_neighbours[1]].remove(val)
+                for neighbour in neighbours:
+                    if self.is_optimal(neighbour[0], neighbour[1]) and [row, col] not in self.get_neighbours(neighbour[0], neighbour[1], self.get_value(neighbour[0], neighbour[1])):
+                        for val in self.domain[row][col]:
+                            if self.neighbour_points_towards(row, col, val, neighbour[0], neighbour[1]):
+                                self.domain[row][col].remove(val)
+
 
     @staticmethod
     def parse_instance() -> 'Board':
