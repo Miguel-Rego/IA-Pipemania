@@ -22,6 +22,10 @@ class Board:
         self.grid = grid  # Store the grid
         self.domain = self.calculate_domain()  # Initialize the domain attribute
         self.propagate_constraints()
+        for row in range(len(self.grid)):
+            for col in range(len(self.grid)):
+                self.grid[row][col] = self.domain[row][col][0]
+
 
     def calculate_domain(self) -> list:
         """Calculates the domain for each cell based on the initial grid."""
@@ -35,10 +39,79 @@ class Board:
             for col in range(len(self.grid[row])):
                 piece = fixed_board_domain[row][col]  # Use the fixed grid
                 piece_type = piece[0]
-                domain_row.append(self.get_possible_rotations(piece_type))
+                max_row = len(self.grid) - 1
+                max_col = len(self.grid[0]) - 1
+                if row == 0 or col == 0 or row == max_row or col == max_col:
+                    domain_row.append(self.fix_board_edges(row, col, max_row, max_col))
+                else:
+                    domain_row.append(self.get_possible_rotations(piece_type))
             domain.append(domain_row)
 
         return domain
+
+    def fix_board_edges(self, row, col, max_row, max_col):
+        """Fixes the rotations of the pieces on the edges of the board."""
+
+        possible_rotations = []
+        piece = self.grid[row][col]
+        piece_type = piece[0]
+
+        if piece_type == "F":
+            if row == 0:
+                possible_rotations = ["FD", "FE", "FB"]
+            if col == 0:
+                possible_rotations = ["FC", "FD", "FB"]
+            if row == max_row:
+                possible_rotations = ["FC", "FE", "FD"]
+            if col == max_col:
+                possible_rotations = ["FC", "FB", "FE"]
+            if row == 0 and col == 0:
+                possible_rotations = ["FD", "FB"]
+            if row == max_row and col == 0:
+                possible_rotations = ["FC", "FD"]
+            if row == max_row and col == max_col:
+                possible_rotations = ["FC", "FE"]
+            if row == 0 and col == max_col:
+                possible_rotations = ["FB", "FE"]
+        elif piece_type == "B":
+            if row == 0:
+                possible_rotations = ["BB"]
+            if col == 0:
+                possible_rotations = ["BD"]
+            if row == max_row:
+                possible_rotations = ["BC"]
+            if col == max_col:
+                possible_rotations = ["BE"]
+        elif piece_type == "V":
+            if row == 0:
+                possible_rotations = ["VB", "VE"]
+            if col == 0:
+                possible_rotations = ["VB", "VD"]
+            if row == max_row:
+                possible_rotations = ["VC", "VD"]
+            if col == max_col:
+                possible_rotations = ["VE", "VC"]
+            if row == 0 and col == 0:
+                possible_rotations = ["VB"]
+            if row == max_row and col == 0:
+                possible_rotations = ["VD"]
+            if row == max_row and col == max_col:
+                possible_rotations = ["VC"]
+            if row == 0 and col == max_col:
+                possible_rotations = ["VE"]
+        elif piece_type == "L":
+            if row == 0:
+                possible_rotations = ["LH"]
+            if col == 0:
+                possible_rotations = ["LV"]
+            if row == max_row:
+                possible_rotations = ["LH"]
+            if col == max_col:
+                possible_rotations = ["LV"]
+
+            # Update the piece with the fixed rotations
+        return possible_rotations
+
 
     def propagate_constraints(self):
         rows = len(self.domain)
@@ -176,7 +249,7 @@ class Board:
 
     def is_optimal(self, row: int, col: int) -> bool:
         """Vê se uma peça já é optimal, ou seja, se não tem mais nenhuma possivel rotação"""
-        if len(self.domain[row][col] == 1):
+        if len(self.domain[row][col]) == 1:
             return True
         else:
             return False
@@ -184,47 +257,47 @@ class Board:
     def get_neighbours(self, row: int, col: int, piece_type: str) -> list:
         neighbours_list = []
         if self.is_piece_right_oriented(piece_type):
-            neighbours_list.append((row + 1, col))
-        if self.is_piece_left_oriented(piece_type):
-            neighbours_list.append((row - 1, col))
-        if self.is_piece_down_oriented(piece_type):
-            neighbours_list.append((row, col - 1))
-        if self.is_piece_up_oriented(piece_type):
             neighbours_list.append((row, col + 1))
+        if self.is_piece_left_oriented(piece_type):
+            neighbours_list.append((row, col - 1))
+        if self.is_piece_down_oriented(piece_type):
+            neighbours_list.append((row + 1, col))
+        if self.is_piece_up_oriented(piece_type):
+            neighbours_list.append((row - 1, col))
 
         return neighbours_list
 
     def get_not_neighbours(self, row: int, col: int, piece_type: str) -> list:
         not_neighbours_list = []
-        if not self.is_piece_right_oriented(piece_type):
-            not_neighbours_list.append((row + 1, col))
-        if not self.is_piece_left_oriented(piece_type):
-            not_neighbours_list.append((row - 1, col))
-        if not self.is_piece_down_oriented(piece_type):
-            not_neighbours_list.append((row, col - 1))
-        if not self.is_piece_up_oriented(piece_type):
+        if not self.is_piece_right_oriented(piece_type) and col != len(self.grid[row]) - 1:
             not_neighbours_list.append((row, col + 1))
+        if not self.is_piece_left_oriented(piece_type) and col != 0:
+            not_neighbours_list.append((row, col - 1))
+        if not self.is_piece_down_oriented(piece_type) and row != len(self.grid[row]) - 1:
+            not_neighbours_list.append((row + 1, col))
+        if not self.is_piece_up_oriented(piece_type) and row != 0:
+            not_neighbours_list.append((row - 1, col))
 
         return not_neighbours_list
 
     def neighbour_points_towards(self, nei_row: int, nei_col: int, nei_piece_type: str, opt_row: int, opt_col: int ):
         if nei_row > opt_row:
-            if self.is_piece_left_oriented(nei_piece_type):
-                return True
-            else:
-                return False
-        if nei_row < opt_row:
-            if self.is_piece_right_oriented(nei_piece_type):
-                return True
-            else:
-                return False
-        if nei_col > opt_col:
             if self.is_piece_up_oriented(nei_piece_type):
                 return True
             else:
                 return False
-        if nei_col < opt_col:
+        if nei_row < opt_row:
             if self.is_piece_down_oriented(nei_piece_type):
+                return True
+            else:
+                return False
+        if nei_col > opt_col:
+            if self.is_piece_left_oriented(nei_piece_type):
+                return True
+            else:
+                return False
+        if nei_col < opt_col:
+            if self.is_piece_right_oriented(nei_piece_type):
                 return True
             else:
                 return False
@@ -237,6 +310,7 @@ class Board:
                 needs_connection = True
             else:
                 needs_connection = False
+                break
         if needs_connection:
             needs_connection_directions.append("right")
 
@@ -245,6 +319,7 @@ class Board:
                 needs_connection = True
             else:
                 needs_connection = False
+                break
         if needs_connection:
             needs_connection_directions.append("left")
 
@@ -253,6 +328,7 @@ class Board:
                 needs_connection = True
             else:
                 needs_connection = False
+                break
         if needs_connection:
             needs_connection_directions.append("up")
 
@@ -261,6 +337,7 @@ class Board:
                 needs_connection = True
             else:
                 needs_connection = False
+                break
 
         if needs_connection:
             needs_connection_directions.append("down")
@@ -291,26 +368,39 @@ class Board:
 
             if self.is_optimal(row, col):
                 for neighbour in neighbours:
+                    temp_domain = self.domain[neighbour[0]][neighbour[1]].copy()
                     for val in self.domain[neighbour[0]][neighbour[1]]:
                         if not self.check_compatibility_pair(val, neighbour[0], neighbour[1], pipe1, row, col):
-                            self.domain[neighbour[0]][neighbour[1]].remove(val)
+                            temp_domain.remove(val)
+                    if len(temp_domain) != len(self.domain[neighbour[0]][neighbour[1]]):
+                        self.domain[neighbour[0]][neighbour[1]] = temp_domain
                 not_neighbours = self.get_not_neighbours(row, col, pipe1)
                 for not_neighbour in not_neighbours:
+                    temp_domain = self.domain[not_neighbour[0]][not_neighbour[1]].copy()
                     for val in self.domain[not_neighbour[0]][not_neighbour[1]]:
                         if self.neighbour_points_towards(not_neighbour[0], not_neighbour[1], val, row, col):
-                            self.domain[not_neighbour[0]][not_neighbour[1]].remove(val)
+                            temp_domain.remove(val)
+                    if len(temp_domain) != len(self.domain[not_neighbour[0]][not_neighbour[1]]):
+                        self.domain[not_neighbour[0]][not_neighbour[1]] = temp_domain
             else:
                 if len(needs_connection) != 0:
                     for direction in needs_connection:
                         dir_neighbours = self.get_neighbour_in_directions(row, col, direction)
+                        temp_domain = self.domain[dir_neighbours[0]][dir_neighbours[1]].copy()
                         for val in self.domain[dir_neighbours[0]][dir_neighbours[1]]:
                             if not self.check_compatibility_pair(val, dir_neighbours[0], dir_neighbours[1], pipe1, row, col):
-                                self.domain[dir_neighbours[0]][dir_neighbours[1]].remove(val)
+                                temp_domain.remove(val)
+                        if len(temp_domain) != len(self.domain[dir_neighbours[0]][dir_neighbours[1]]):
+                            self.domain[dir_neighbours[0]][dir_neighbours[1]] = temp_domain
+
                 for neighbour in neighbours:
-                    if self.is_optimal(neighbour[0], neighbour[1]) and [row, col] not in self.get_neighbours(neighbour[0], neighbour[1], self.get_value(neighbour[0], neighbour[1])):
+                    temp_domain = self.domain[row][col].copy()
+                    if self.is_optimal(neighbour[0], neighbour[1]) and (row, col) not in self.get_neighbours(neighbour[0], neighbour[1], self.domain[neighbour[0]][neighbour[1]][0]):
                         for val in self.domain[row][col]:
                             if self.neighbour_points_towards(row, col, val, neighbour[0], neighbour[1]):
-                                self.domain[row][col].remove(val)
+                                temp_domain.remove(val)
+                        if len(temp_domain) != len(self.domain[row][col]):
+                            self.domain[row][col] = temp_domain
 
 
     @staticmethod
@@ -334,7 +424,9 @@ class PipeMania(search.Problem):
 
     def actions(self, state: 'PipeManiaState') -> List[Tuple[int, int, str]]:
         """Retorna uma lista de ações que podem ser executadas a partir do estado passado como argumento."""
-        return state.board.domain
+        for row in range(len(state.board.grid)):
+            for col in range(len(state.board.grid)):
+                if state.board.domain[row][col]
 
     def incompatible_pieces_list(self, input_piece: str):
         """Based on a piece input determines which pieces are incompatible with it"""
@@ -639,9 +731,9 @@ def fix_board_edges(grid: List[List[str]]) -> List[List[str]]:
                 if col == 0:
                     possible_rotations = ["FC", "FD", "FB"]
                 if row == max_row:
-                    possible_rotations = ["FC", "FE", "FB"]
+                    possible_rotations = ["FC", "FE", "FD"]
                 if col == max_col:
-                    possible_rotations = ["FC", "FD", "FE"]
+                    possible_rotations = ["FC", "FD", "FB"]
                 if row == 0 and col == 0:
                     possible_rotations = ["FD", "FB"]
                 if row == max_row and col == 0:
@@ -649,7 +741,7 @@ def fix_board_edges(grid: List[List[str]]) -> List[List[str]]:
                 if row == max_row and col == max_col:
                     possible_rotations = ["FC", "FE"]
                 if row == 0 and col == max_col:
-                    possible_rotations = ["FD", "FE"]
+                    possible_rotations = ["FB", "FE"]
             elif piece_type == "B":
                 if row == 0:
                     possible_rotations = ["BB"]
