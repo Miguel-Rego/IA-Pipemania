@@ -44,57 +44,29 @@ class Board:
         rows = len(self.domain)
         cols = len(self.domain[0])
 
-        # Iterate through the domain in a square pattern
-        for i in range(rows + cols - 1):
-            for row in range(max(0, i - cols + 1), min(i + 1, rows)):
-                col = i - row
+        layers = min(rows, cols) // 2
 
-                # Check compatibility with adjacent cells
-                for d_row, d_col in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
-                    adj_row = row + d_row
-                    adj_col = col + d_col
-                    constraint_success = False
+        for layer in range(layers):
+            for pipe1 in range(layer, cols - layer):
 
-                    # Ensure adjacent cell is within bounds
-                    if 0 <= adj_row < rows and 0 <= adj_col < cols:
-                        for pipe1 in self.domain[row][col]:
-                            for pipe2 in self.domain[adj_row][adj_col]:
-                                constraint_success = False
 
-                                # Check compatibility
-                                if col == adj_col:
-                                    if row < adj_row:
-                                        if self.is_piece_right_oriented(pipe1):
-                                            if self.check_compatibility_pair(pipe1, row, col, pipe2, adj_row, adj_col):
-                                                constraint_success = True
-                                                break
-                                        elif self.is_piece_left_oriented(pipe2):
-                                            constraint_success = False
-                                    if row > adj_row:
-                                        if self.is_piece_left_oriented(pipe1):
-                                            if self.check_compatibility_pair(pipe1, row, col, pipe2, adj_row, adj_col):
-                                                constraint_success = True
-                                                break
-                                        elif self.is_piece_right_oriented(pipe2):
-                                            constraint_success = False
-                                elif row == adj_row:
-                                    if col < adj_col:
-                                        if self.is_piece_down_oriented(pipe1):
-                                            if self.check_compatibility_pair(pipe1, row, col, pipe2, adj_row, adj_col):
-                                                constraint_success = True
-                                                break
-                                        elif self.is_piece_up_oriented(pipe2):
-                                            constraint_success = False
-                                    if col > adj_col:
-                                        if self.is_piece_up_oriented(pipe1):
-                                            if self.check_compatibility_pair(pipe1, row, col, pipe2, adj_row, adj_col):
-                                                constraint_success = True
-                                                break
-                                        elif self.is_piece_right_oriented(pipe2):
-                                            constraint_success = False
-                            if not constraint_success:
-                                # Remove pipe1 from domain
-                                self.domain[row][col].remove(pipe1)
+    def propagate_algorithm(self, row: int, col: int):
+        for pipe1 in self.domain[row][col]:
+
+            if self.is_optimal(row, col):
+                neighbours = self.get_neighbours(row, col, pipe1)
+                for neighbour in neighbours:
+                    for val in self.domain[neighbour[0]][neighbour[1]]:
+                        if not self.check_compatibility_pair(val, neighbour[0], neighbour[1], pipe1, row, col):
+                            self.domain[neighbour[0]][neighbour[1]].remove(val)
+                not_neighbours = self.get_not_neighbours(row, col, pipe1)
+                    for not_neighbour in not_neighbours:
+                        for val in self.domain[not_neighbour[0]][not_neighbour[1]]:
+                            if self.neighbour_points_towards
+
+
+
+
 
     def check_compatibility_pair(self, first_piece: str, first_row: int, first_col: int, second_piece: str, second_row: int, second_col: int):
         """Based on a pair of pieces determines if they are compatible between each other"""
@@ -208,6 +180,110 @@ class Board:
         left_value = self.grid[row][col - 1] if col > 0 else None
         right_value = self.grid[row][col + 1] if col < len(self.grid[row]) - 1 else None
         return left_value, right_value
+
+    def is_optimal(self, row: int, col: int) -> bool:
+        """Vê se uma peça já é optimal, ou seja, se não tem mais nenhuma possivel rotação"""
+        if len(self.domain[row][col] == 1):
+            return True
+        else:
+            return False
+
+    def get_neighbours(self, row: int, col: int, piece_type: str) -> list:
+        neighbours_list = []
+        if self.is_piece_right_oriented(piece_type):
+            neighbours_list.append((row + 1, col))
+        if self.is_piece_left_oriented(piece_type):
+            neighbours_list.append((row - 1, col))
+        if self.is_piece_down_oriented(piece_type):
+            neighbours_list.append((row, col - 1))
+        if self.is_piece_up_oriented(piece_type):
+            neighbours_list.append((row, col + 1))
+
+        return neighbours_list
+
+    def get_not_neighbours(self, row: int, col: int, piece_type: str) -> list:
+        not_neighbours_list = []
+        if not self.is_piece_right_oriented(piece_type):
+            not_neighbours_list.append((row + 1, col))
+        if not self.is_piece_left_oriented(piece_type):
+            not_neighbours_list.append((row - 1, col))
+        if not self.is_piece_down_oriented(piece_type):
+            not_neighbours_list.append((row, col - 1))
+        if not self.is_piece_up_oriented(piece_type):
+            not_neighbours_list.append((row, col + 1))
+
+        return not_neighbours_list
+
+    def neighbour_points_towards(self, nei_row: int, nei_col: int, nei_piece_type: str, opt_row: int, opt_col: int ):
+        if nei_row > opt_row:
+            if self.is_piece_left_oriented(nei_piece_type):
+                return True
+            else:
+                return False
+        if nei_row < opt_row:
+            if self.is_piece_right_oriented(nei_piece_type):
+                return True
+            else:
+                return False
+        if nei_col > opt_col:
+            if self.is_piece_up_oriented(nei_piece_type):
+                return True
+            else:
+                return False
+        if nei_col < opt_col:
+            if self.is_piece_down_oriented(nei_piece_type):
+                return True
+            else:
+                return False
+    def needs_connection(self, row: int, col: int) -> list:
+        needs_connection_directions = []
+        needs_connection = False
+
+        for i in self.domain[row][col]:
+            if self.is_piece_right_oriented(i):
+                needs_connection = True
+            else:
+                needs_connection = False
+        if needs_connection:
+            needs_connection_directions.append("right")
+
+        for j in self.domain[row][col]:
+            if self.is_piece_left_oriented(j):
+                needs_connection = True
+            else:
+                needs_connection = False
+        if needs_connection:
+            needs_connection_directions.append("left")
+
+        for n in self.domain[row][col]:
+            if self.is_piece_up_oriented(n):
+                needs_connection = True
+            else:
+                needs_connection = False
+        if needs_connection:
+            needs_connection_directions.append("up")
+
+        for l in self.domain[row][col]:
+            if self.is_piece_down_oriented(l):
+                needs_connection = True
+            else:
+                needs_connection = False
+
+        if needs_connection:
+            needs_connection_directions.append("down")
+
+        return needs_connection_directions
+
+    def get_neighbour_in_directions(self, row: int, col: int, direction: str) -> list:
+        if direction == "left":
+            return [row - 1, col]
+        if direction == "right":
+            return [row + 1, col]
+        if direction == "down":
+            return [row, col + 1]
+        if direction == "up":
+            return [row, col - 1]
+
 
     def print_board(self):
         """Prints the board grid."""
