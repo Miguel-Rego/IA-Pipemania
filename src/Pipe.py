@@ -424,9 +424,17 @@ class PipeMania(search.Problem):
 
     def actions(self, state: 'PipeManiaState') -> List[Tuple[int, int, str]]:
         """Retorna uma lista de ações que podem ser executadas a partir do estado passado como argumento."""
+        actions_list = []
         for row in range(len(state.board.grid)):
             for col in range(len(state.board.grid)):
-                if state.board.domain[row][col]
+                if len(state.board.domain[row][col]) > 1:
+                    for i in range(len(state.board.domain[row][col])):
+                        if i == 0:
+                            continue
+                        actions_list.append((row, col, state.board.domain[row][col][i]))
+        return actions_list
+
+
 
     def incompatible_pieces_list(self, input_piece: str):
         """Based on a piece input determines which pieces are incompatible with it"""
