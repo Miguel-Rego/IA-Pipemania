@@ -40,7 +40,7 @@ class Board:
                 piece = fixed_board_domain[row][col]  # Use the fixed grid
                 piece_type = piece[0]
                 max_row = len(self.grid) - 1
-                max_col = len(self.grid[0]) - 1
+                max_col = len(self.grid) - 1
                 if row == 0 or col == 0 or row == max_row or col == max_col:
                     domain_row.append(self.fix_board_edges(row, col, max_row, max_col))
                 else:
@@ -346,13 +346,13 @@ class Board:
 
     def get_neighbour_in_directions(self, row: int, col: int, direction: str) -> list:
         if direction == "left":
-            return [row - 1, col]
-        if direction == "right":
-            return [row + 1, col]
-        if direction == "down":
-            return [row, col + 1]
-        if direction == "up":
             return [row, col - 1]
+        if direction == "right":
+            return [row, col + 1]
+        if direction == "down":
+            return [row + 1, col]
+        if direction == "up":
+            return [row - 1, col]
 
 
     def print_board(self):
@@ -725,7 +725,7 @@ def fix_board_edges(grid: List[List[str]]) -> List[List[str]]:
     """Fixes the rotations of the pieces on the edges of the board."""
     new_grid = [row[:] for row in grid]
     max_row = len(new_grid) - 1
-    max_col = len(new_grid[0]) - 1
+    max_col = len(new_grid) - 1
 
     for row in range(len(new_grid)):
         for col in range(len(new_grid[row])):
