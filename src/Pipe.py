@@ -1,5 +1,9 @@
+# Grupo 105:
+# 104119 Miguel Rego
+# 107316 Afonso Mateus
+
 import sys
-from typing import List, Tuple
+from typing import List, Tuple, Set
 import search
 from search import Node
 
@@ -12,48 +16,51 @@ class PipeManiaState:
         self.id = PipeManiaState.state_id
         PipeManiaState.state_id += 1
 
-    def __lt__(self, other: 'PipeManiaState'):
-        return self.id < other.id
+    def __eq__(self, other):
+        if not isinstance(other, PipeManiaState):
+            return False
+        return self.board.serialize() == other.board.serialize()
+
+    def __hash__(self):
+        return hash(self.board.serialize())
 
 class Board:
     """Representação interna de um tabuleiro de PipeMania."""
 
-    def __init__(self, grid: List[List[str]]):
-        self.grid = grid  # Store the grid
-        self.domain = self.calculate_domain()  # Initialize the domain attribute
+    def __init__(self, domain: List[List[List[str]]]):
+        self.domain = domain  # Initialize the domain attribute
+
+
+    def constraint_domain(self):
+        self.calculate_domain()
         self.propagate_constraints()
-        for row in range(len(self.grid)):
-            for col in range(len(self.grid)):
-                self.grid[row][col] = self.domain[row][col][0]
+        return self.domain
 
-
-    def calculate_domain(self) -> list:
+    def calculate_domain(self):
         """Calculates the domain for each cell based on the initial grid."""
         domain = []
 
-        # Fix the edges of the board
-        fixed_board_domain = fix_board_edges(self.grid)
 
-        for row in range(len(self.grid)):
+        for row in range(len(self.domain)):
             domain_row = []
-            for col in range(len(self.grid[row])):
-                piece = fixed_board_domain[row][col]  # Use the fixed grid
+            for col in range(len(self.domain[row])):
+                piece = self.domain[row][col][0]  # Use the fixed grid
                 piece_type = piece[0]
-                max_row = len(self.grid) - 1
-                max_col = len(self.grid) - 1
+                max_row = len(self.domain) - 1
+                max_col = len(self.domain) - 1
                 if row == 0 or col == 0 or row == max_row or col == max_col:
                     domain_row.append(self.fix_board_edges(row, col, max_row, max_col))
                 else:
                     domain_row.append(self.get_possible_rotations(piece_type))
             domain.append(domain_row)
+        self.domain = domain
 
-        return domain
 
     def fix_board_edges(self, row, col, max_row, max_col):
         """Fixes the rotations of the pieces on the edges of the board."""
 
         possible_rotations = []
-        piece = self.grid[row][col]
+        piece = self.domain[row][col][0]
         piece_type = piece[0]
 
         if piece_type == "F":
@@ -233,18 +240,18 @@ class Board:
 
     def get_value(self, row: int, col: int) -> str:
         """Devolve o valor na respetiva posição do tabuleiro."""
-        return self.grid[row][col]
+        return self.domain[row][col][0]
 
     def adjacent_vertical_values(self, row: int, col: int) -> Tuple[str, str]:
         """Devolve os valores imediatamente acima e abaixo, respectivamente."""
-        above_value = self.grid[row - 1][col] if row > 0 else None
-        below_value = self.grid[row + 1][col] if row < len(self.grid) - 1 else None
+        above_value = self.domain[row - 1][col][0] if row > 0 else None
+        below_value = self.domain[row + 1][col][0] if row < len(self.domain) - 1 else None
         return above_value, below_value
 
     def adjacent_horizontal_values(self, row: int, col: int) -> Tuple[str, str]:
         """Devolve os valores imediatamente à esquerda e à direita, respectivamente."""
-        left_value = self.grid[row][col - 1] if col > 0 else None
-        right_value = self.grid[row][col + 1] if col < len(self.grid[row]) - 1 else None
+        left_value = self.domain[row][col - 1][0] if col > 0 else None
+        right_value = self.domain[row][col + 1][0] if col < len(self.domain[row]) - 1 else None
         return left_value, right_value
 
     def is_optimal(self, row: int, col: int) -> bool:
@@ -269,11 +276,11 @@ class Board:
 
     def get_not_neighbours(self, row: int, col: int, piece_type: str) -> list:
         not_neighbours_list = []
-        if not self.is_piece_right_oriented(piece_type) and col != len(self.grid[row]) - 1:
+        if not self.is_piece_right_oriented(piece_type) and col != len(self.domain[row]) - 1:
             not_neighbours_list.append((row, col + 1))
         if not self.is_piece_left_oriented(piece_type) and col != 0:
             not_neighbours_list.append((row, col - 1))
-        if not self.is_piece_down_oriented(piece_type) and row != len(self.grid[row]) - 1:
+        if not self.is_piece_down_oriented(piece_type) and row != len(self.domain[row]) - 1:
             not_neighbours_list.append((row + 1, col))
         if not self.is_piece_up_oriented(piece_type) and row != 0:
             not_neighbours_list.append((row - 1, col))
@@ -357,13 +364,16 @@ class Board:
 
     def print_board(self):
         """Prints the board grid."""
-        for row in self.grid:
-            print('\t'.join(row))
+        for row in self.domain:
+            print('\t'.join(cell[0] for cell in row))
 
 
     def propagate_algorithm(self, row: int, col: int):
         needs_connection = self.needs_connection(row, col)
+        temp_domain_pipe1 = []
         for pipe1 in self.domain[row][col]:
+            if len(temp_domain_pipe1) != 0 and pipe1 not in temp_domain_pipe1:
+                continue
             neighbours = self.get_neighbours(row, col, pipe1)
 
             if self.is_optimal(row, col):
@@ -394,39 +404,48 @@ class Board:
                             self.domain[dir_neighbours[0]][dir_neighbours[1]] = temp_domain
 
                 for neighbour in neighbours:
-                    temp_domain = self.domain[row][col].copy()
+                    temp_domain_pipe1 = self.domain[row][col].copy()
                     if self.is_optimal(neighbour[0], neighbour[1]) and (row, col) not in self.get_neighbours(neighbour[0], neighbour[1], self.domain[neighbour[0]][neighbour[1]][0]):
                         for val in self.domain[row][col]:
                             if self.neighbour_points_towards(row, col, val, neighbour[0], neighbour[1]):
-                                temp_domain.remove(val)
-                        if len(temp_domain) != len(self.domain[row][col]):
-                            self.domain[row][col] = temp_domain
+                                temp_domain_pipe1.remove(val)
+                        if len(temp_domain_pipe1) != len(self.domain[row][col]):
+                            self.domain[row][col] = temp_domain_pipe1
 
+    def serialize(self):
+        return ''.join(''.join(cell[0] for cell in row) for row in self.domain)
 
     @staticmethod
     def parse_instance() -> 'Board':
-        """Lê o conteúdo do arquivo 'test.txt' e retorna uma instância da classe Board."""
-        with open('test.txt', 'r') as file:
-            content = file.read()
+        """Reads the content of the file 'test.txt' and returns an instance of the Board class."""
+        content = sys.stdin.read()
 
-        # Split the content into rows and columns
-        rows = content.strip().split('\n')
-        grid = [row.split(' ') for row in rows]
+        # Split the content into rows and columns and create a two-dimensional grid
+        grid = [line.split('\t') for line in content.strip().split('\n')]
+
+        # Initialize the wrapper grid as a list of lists
+        wrapper_grid = []
+        for row in range(len(grid)):
+            row_list = []  # Initialize an empty list for each row
+            for col in range(len(grid[row])):
+                row_list.append([grid[row][col]])  # Append the string as a single-element list
+            wrapper_grid.append(row_list)  # Append the row list to the wrapper grid
 
         # Return the Board object with the parsed grid
-        return Board(grid)
+        return Board(wrapper_grid)
 
 
 class PipeMania(search.Problem):
     def __init__(self, board: Board):
         """O construtor especifica o estado inicial."""
         super().__init__(PipeManiaState(board))
+        self.visited_states: Set[str] = set()
 
     def actions(self, state: 'PipeManiaState') -> List[Tuple[int, int, str]]:
         """Retorna uma lista de ações que podem ser executadas a partir do estado passado como argumento."""
         actions_list = []
-        for row in range(len(state.board.grid)):
-            for col in range(len(state.board.grid)):
+        for row in range(len(state.board.domain)):
+            for col in range(len(state.board.domain)):
                 if len(state.board.domain[row][col]) > 1:
                     for i in range(len(state.board.domain[row][col])):
                         if i == 0:
@@ -503,7 +522,7 @@ class PipeMania(search.Problem):
                 return False
 
         elif input_piece.startswith("V"):
-            orientation = state.board.grid[row][col][1]
+            orientation = state.board.domain[row][col][0][1]
             if (orientation == "C" and
                     (self.check_incompatibility(state, 'FC', row, col) or
                      self.check_incompatibility(state, 'FE', row, col))):
@@ -527,7 +546,7 @@ class PipeMania(search.Problem):
                 return False
 
         elif input_piece.startswith("L"):
-            orientation = state.board.grid[row][col][1]
+            orientation = state.board.domain[row][col][0][1]
             if (orientation == "H" and
                     (self.check_incompatibility(state, 'FE', row, col) or
                      self.check_incompatibility(state, 'FD', row, col))):
@@ -650,16 +669,22 @@ class PipeMania(search.Problem):
         board = state.board
 
         # Create a copy of the board grid to modify
-        new_grid = [row[:] for row in board.grid]
+        new_domain = [row[:] for row in board.domain]
 
         # Update the piece at the specified position with the given rotation
         new_piece = rotation
-        new_grid[row][col] = new_piece
+        replaced_piece_index = new_domain[row][col].index(new_piece)
+        temp_row = new_domain[row][col].copy()
+        new_domain[row][col][0] = new_piece
+        new_domain[row][col][replaced_piece_index] = temp_row[0]
+        new_state = PipeManiaState(Board(new_domain))
+        serialized_state = new_state.board.serialize()
 
-        # Create a new PipeManiaState object with the updated grid
-        new_state = PipeManiaState(Board(new_grid))
-        return new_state
-
+        if serialized_state not in self.visited_states:
+            self.visited_states.add(serialized_state)
+            return new_state
+        else:
+            return state
     def get_possible_rotations(self, piece_type: str) -> List[str]:
         """Returns the possible rotations for a given piece type."""
         if piece_type == "F":
@@ -677,9 +702,9 @@ class PipeMania(search.Problem):
         """Retorna True se e só se o estado passado como argumento é
         um estado objetivo. Deve verificar se todas as posições do tabuleiro
         estão preenchidas de acordo com as regras do problema."""
-        for row in range(len(state.board.grid)):
-            for col in range(len(state.board.grid[row])):
-                if not self.piece_compatibility_converter(state, state.board.grid[row][col], row, col):
+        for row in range(len(state.board.domain)):
+            for col in range(len(state.board.domain[row])):
+                if not self.piece_compatibility_converter(state, state.board.domain[row][col][0], row, col):
                     return False
         return True
 
@@ -687,8 +712,8 @@ class PipeMania(search.Problem):
         max_length = 0
         visited = set()
 
-        for row in range(len(state.board.grid)):
-            for col in range(len(state.board.grid[row])):
+        for row in range(len(state.board.domain)):
+            for col in range(len(state.board.domain[row])):
                 piece = state.board.get_value(row, col)
                 if (row, col) not in visited and piece.startswith("F"):  # Start exploring from a piece of the pipe
                     length = self.dfs(state, row, col, visited)
@@ -697,8 +722,7 @@ class PipeMania(search.Problem):
         return max_length
 
     def dfs(self, state: PipeManiaState, row: int, col: int, visited: set) -> int:
-        if (row < 0 or row >= len(state.board.grid) or col < 0 or col >= len(state.board.grid[row]) or
-                 (row, col) in visited):
+        if (row < 0 or row >= len(state.board.domain) - 1 or col < 0 or col >= len(state.board.domain[row]) - 1 or (row, col) in visited):
             return 0
 
         visited.add((row, col))
@@ -707,9 +731,9 @@ class PipeMania(search.Problem):
         # Check compatibility with adjacent pieces
         for dr, dc in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
             new_row, new_col = row + dr, col + dc
-            if 0 <= new_row < len(state.board.grid) and 0 <= new_col < len(state.board.grid[row]):
+            if 0 <= new_row < len(state.board.domain) and 0 <= new_col < len(state.board.domain[row]):
                 next_piece = state.board.get_value(new_row, new_col)
-                if self.check_compatibility_pair(state.board.grid[row][col], row, col, next_piece, new_row, new_col) and (new_row, new_col) not in visited:
+                if self.check_compatibility_pair(state.board.domain[row][col][0], row, col, next_piece, new_row, new_col) and (new_row, new_col) not in visited:
                     length += self.dfs(state, new_row, new_col, visited)  # Recursively explore next piece
         return length
 
@@ -717,20 +741,20 @@ class PipeMania(search.Problem):
     def h(self, node: 'Node') -> float:
         """Função heuristica utilizada para a procura A*."""
         state = node.state
-        print(len(state.board.grid) * len(state.board.grid) - self.longest_continuous_pipe_length(state))
-        return len(state.board.grid) * len(state.board.grid) - self.longest_continuous_pipe_length(state)
+        print(len(state.board.domain))
+        return len(state.board.domain) * len(state.board.domain) - self.longest_continuous_pipe_length(state)
 
 
-def fix_board_edges(grid: List[List[str]]) -> List[List[str]]:
+def fix_board_edges(domain: List[List[List[str]]]) -> List[List[List[str]]]:
     """Fixes the rotations of the pieces on the edges of the board."""
-    new_grid = [row[:] for row in grid]
-    max_row = len(new_grid) - 1
-    max_col = len(new_grid) - 1
+    new_domain = [row[:] for row in domain]
+    max_row = len(new_domain) - 1
+    max_col = len(new_domain) - 1
 
-    for row in range(len(new_grid)):
-        for col in range(len(new_grid[row])):
+    for row in range(len(new_domain)):
+        for col in range(len(new_domain[row])):
             possible_rotations = []
-            piece = new_grid[row][col]
+            piece = new_domain[row][col][0]
             piece_type = piece[0]
 
             if piece_type == "F":
@@ -788,14 +812,21 @@ def fix_board_edges(grid: List[List[str]]) -> List[List[str]]:
 
             # Update the piece with the fixed rotations
             if len(possible_rotations) > 0:
-                new_grid[row][col] = possible_rotations[0]
+                new_domain[row][col] = possible_rotations
 
-    return new_grid
+    return new_domain
 
 
-# Example usage:
+
 board = Board.parse_instance()
-initial_grid = board.grid
+initial_grid = board.domain
+fixed_grid = board.constraint_domain()
+# goal.node_state.astar_search()
 problem_fix = PipeMania(board)
-goal_node = search.astar_search(problem_fix)
-goal_node.state.board.print_board()
+problem_fix_state = PipeManiaState(board)
+for i in range(10000):
+    if problem_fix.goal_test(problem_fix_state):
+        problem_fix_state.board.print_board()
+        break
+    else:
+        problem_fix_state.board.propagate_constraints()
