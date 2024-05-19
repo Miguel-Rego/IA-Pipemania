@@ -817,7 +817,6 @@ def fix_board_edges(domain: List[List[List[str]]]) -> List[List[List[str]]]:
     return new_domain
 
 
-
 board = Board.parse_instance()
 initial_grid = board.domain
 fixed_grid = board.constraint_domain()
