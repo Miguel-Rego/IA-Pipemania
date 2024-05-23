@@ -6,6 +6,7 @@ import sys
 from typing import List, Tuple, Set
 import search
 from search import Node
+from collections import Counter
 
 
 class PipeManiaState:
@@ -375,7 +376,6 @@ class Board:
             if len(temp_domain_pipe1) != 0 and pipe1 not in temp_domain_pipe1:
                 continue
             neighbours = self.get_neighbours(row, col, pipe1)
-
             if self.is_optimal(row, col):
                 for neighbour in neighbours:
                     temp_domain = self.domain[neighbour[0]][neighbour[1]].copy()
@@ -412,6 +412,24 @@ class Board:
                         if len(temp_domain_pipe1) != len(self.domain[row][col]):
                             self.domain[row][col] = temp_domain_pipe1
 
+                    temp_domain_pipe2 = self.domain[neighbour[0]][neighbour[1]].copy()
+                    if pipe1.startswith("F"):
+                        for val in self.domain[neighbour[0]][neighbour[1]]:
+                            if self.neighbour_points_towards(neighbour[0], neighbour[1], val, row, col) and val.startswith("F"):
+                                temp_domain_pipe2.remove(val)
+                        if len(temp_domain_pipe2) != len(self.domain[neighbour[0]][neighbour[1]]):
+                            self.domain[neighbour[0]][neighbour[1]] = temp_domain_pipe2
+
+
+
+    def optimal_piece_count(self):
+        optimal_piece_count_local = 0
+        for row in range(len(self.domain)):
+            for col in range(len(self.domain[row])):
+                if len(self.domain[row][col]) == 1:
+                    optimal_piece_count_local += 1
+        return optimal_piece_count_local
+
     def serialize(self):
         return ''.join(''.join(cell[0] for cell in row) for row in self.domain)
 
@@ -435,6 +453,7 @@ class Board:
         return Board(wrapper_grid)
 
 
+
 class PipeMania(search.Problem):
     def __init__(self, board: Board):
         """O construtor especifica o estado inicial."""
@@ -447,10 +466,15 @@ class PipeMania(search.Problem):
         for row in range(len(state.board.domain)):
             for col in range(len(state.board.domain)):
                 if len(state.board.domain[row][col]) > 1:
-                    for i in range(len(state.board.domain[row][col])):
-                        if i == 0:
-                            continue
+                    for i in range(1, len(state.board.domain[row][col])):
                         actions_list.append((row, col, state.board.domain[row][col][i]))
+
+        # Count the frequency of each coordinate
+        coord_counts = Counter((row, col) for row, col, _ in actions_list)
+
+        # Sort actions_list by the frequency of the coordinates
+        actions_list.sort(key=lambda x: coord_counts[(x[0], x[1])], reverse=True)
+
         return actions_list
 
 
@@ -649,16 +673,24 @@ class PipeMania(search.Problem):
         if first_row == second_row:
             if first_col < second_col:
                 if self.is_piece_right_oriented(first_piece) and self.is_piece_left_oriented(second_piece):
+                    if first_piece.startswith("F") and second_piece.startswith("F"):
+                        return False
                     return True
             elif first_col > second_col:
                 if self.is_piece_right_oriented(second_piece) and self.is_piece_left_oriented(first_piece):
+                    if first_piece.startswith("F") and second_piece.startswith("F"):
+                        return False
                     return True
         elif first_col == second_col:
             if first_row < second_row:
                 if self.is_piece_down_oriented(first_piece) and  self.is_piece_up_oriented(second_piece):
+                    if first_piece.startswith("F") and second_piece.startswith("F"):
+                        return False
                     return True
             elif first_row > second_row:
                 if self.is_piece_down_oriented(second_piece) and self.is_piece_up_oriented(first_piece):
+                    if first_piece.startswith("F") and second_piece.startswith("F"):
+                        return False
                     return True
         return False
 
@@ -678,13 +710,8 @@ class PipeMania(search.Problem):
         new_domain[row][col][0] = new_piece
         new_domain[row][col][replaced_piece_index] = temp_row[0]
         new_state = PipeManiaState(Board(new_domain))
-        serialized_state = new_state.board.serialize()
+        return new_state
 
-        if serialized_state not in self.visited_states:
-            self.visited_states.add(serialized_state)
-            return new_state
-        else:
-            return state
     def get_possible_rotations(self, piece_type: str) -> List[str]:
         """Returns the possible rotations for a given piece type."""
         if piece_type == "F":
@@ -704,7 +731,7 @@ class PipeMania(search.Problem):
         estão preenchidas de acordo com as regras do problema."""
         for row in range(len(state.board.domain)):
             for col in range(len(state.board.domain[row])):
-                if not self.piece_compatibility_converter(state, state.board.domain[row][col][0], row, col):
+                if len(state.board.domain[row][col]) != 1:
                     return False
         return True
 
@@ -736,13 +763,6 @@ class PipeMania(search.Problem):
                 if self.check_compatibility_pair(state.board.domain[row][col][0], row, col, next_piece, new_row, new_col) and (new_row, new_col) not in visited:
                     length += self.dfs(state, new_row, new_col, visited)  # Recursively explore next piece
         return length
-
-
-    def h(self, node: 'Node') -> float:
-        """Função heuristica utilizada para a procura A*."""
-        state = node.state
-        print(len(state.board.domain))
-        return len(state.board.domain) * len(state.board.domain) - self.longest_continuous_pipe_length(state)
 
 
 def fix_board_edges(domain: List[List[List[str]]]) -> List[List[List[str]]]:
@@ -815,6 +835,8 @@ def fix_board_edges(domain: List[List[List[str]]]) -> List[List[List[str]]]:
                 new_domain[row][col] = possible_rotations
 
     return new_domain
+
+
 
 
 board = Board.parse_instance()
